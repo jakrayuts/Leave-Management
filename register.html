@@ -64,11 +64,11 @@
         <input type="password" class="form-control" name="password" required />
       </div>
       <div class="mb-3">
-  <label for="department" class="form-label">แผนก</label>
-  <select class="form-select" name="department" id="departmentSelect" required>
-    <option value="">-- เลือกแผนก --</option>
-  </select>
-  </div>
+        <label for="department" class="form-label">แผนก</label>
+        <select class="form-select" name="department" id="departmentSelect" required>
+          <option value="">-- เลือกแผนก --</option>
+        </select>
+      </div>
 
       <button type="submit" class="btn btn-primary w-100">สมัครสมาชิก</button>
     </form>
@@ -81,10 +81,31 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const supabase = supabase.createClient('https://leave-system.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw');
+    const supabase = supabase.createClient(
+      'https://leave-system.supabase.co',
+      'YOUR_ANON_KEY_HERE' // <-- ใส่ Anon Key ที่แท้จริงของคุณ
+    );
 
-    
-      loadDepartments();
+    // ✅ โหลดรายชื่อแผนกลงใน ComboBox
+    async function loadDepartments() {
+      const { data, error } = await supabase.from('departments').select('dept_name');
+      if (error) {
+        console.error('โหลดแผนกล้มเหลว:', error.message);
+        return;
+      }
+
+      const deptSelect = document.getElementById('departmentSelect');
+      data.forEach(row => {
+        const option = document.createElement('option');
+        option.value = row.dept_name;
+        option.textContent = row.dept_name;
+        deptSelect.appendChild(option);
+      });
+    }
+
+    loadDepartments(); // ✅ ต้องเรียกใช้งานที่นี่
+
+    // ✅ จัดการการสมัครสมาชิก
     document.getElementById('registerForm').addEventListener('submit', async e => {
       e.preventDefault();
       const form = e.target;
@@ -108,27 +129,13 @@
         id: user.id,
         name,
         department,
-        role: 'User' // หรือ employee
+        role: 'User'
       });
 
       alert('สมัครสมาชิกสำเร็จ!');
       form.reset();
       window.location.href = "index.html";
     });
-    async function loadDepartments() {
-  const { data, error } = await supabase.from('departments').select('dept_name');
-  if (error) {
-    console.error('โหลดแผนกล้มเหลว:', error.message);
-    return;
-  }
-
-  const deptSelect = document.getElementById('departmentSelect');
-  data.forEach(row => {
-    const option = document.createElement('option');
-    option.value = row.dept_name;
-    option.textContent = row.dept_name;
-    deptSelect.appendChild(option);
-  });
   </script>
 
 </body>
