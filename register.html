@@ -78,13 +78,18 @@
     </div>
   </div>
 
- <!-- ✅ Supabase JS (UMD) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.6/dist/umd/supabase.min.js"></script>
+<!-- ✅ ใช้ Supabase v2 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
   <script>
-    const supabaseUrl = 'https://bokajbbrctsuqeyvykgb.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'; // 🔁 ใส่ Anon Key ของคุณตรงนี้
-    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+    //const supabaseUrl = 'https://bokajbbrctsuqeyvykgb.supabase.co';
+    //const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'; // 🔁 ใส่ Anon Key ของคุณตรงนี้
+    //const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
+    const supabaseClient = window.supabase.createClient(
+    'https://bokajbbrctsuqeyvykgb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw' // ใส่ของคุณให้ถูกต้อง
+  );
+    
     // ✅ โหลดแผนก
     async function loadDepartments() {
       const { data, error } = await supabaseClient.from('departments').select('dept_name');
@@ -103,32 +108,34 @@
     }
 loadDepartments();
 
-// ✅ สมัครสมาชิก
+// ✅ สมัครสมาชิก (แบบ v2)
   document.getElementById('registerForm').addEventListener('submit', async e => {
     e.preventDefault();
+
     const form = e.target;
     const name = form.name.value;
     const email = form.email.value;
     const password = form.password.value;
     const department = form.department.value;
 
-    // ✅ ใช้รูปแบบ v1: signUp(email, password)
-    const { user, error } = await supabaseClient.auth.signUp(email, password);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    });
 
     if (error) {
       alert('สมัครไม่สำเร็จ: ' + error.message);
       return;
     }
 
-    // ✅ เพิ่มข้อมูลเข้า table users
-    const { error: insertError } = await supabaseClient.from('users').insert([
-      {
-        id: user.id,
-        name,
-        department,
-        role: 'User'
-      }
-    ]);
+    const user = data.user;
+
+    const { error: insertError } = await supabase.from('users').insert({
+      id: user.id,
+      name,
+      department,
+      role: 'User'
+    });
 
     if (insertError) {
       alert('บันทึกข้อมูลผู้ใช้ล้มเหลว: ' + insertError.message);
@@ -139,7 +146,6 @@ loadDepartments();
     form.reset();
     window.location.href = "index.html";
   });
-
   </script>
 
 </body>
