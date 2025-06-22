@@ -103,43 +103,44 @@
     }
 loadDepartments();
 
-   document.getElementById('registerForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const form = e.target;
-    const name = form.name.value;
-    const email = form.email.value;
-    const password = form.password.value;
-    const department = form.department.value;
+document.getElementById('registerForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const form = e.target;
+  const name = form.name.value;
+  const email = form.email.value;
+  const password = form.password.value;
+  const department = form.department.value;
 
-    // เรียก signUp แบบ v1 ด้วย object
-    const { user, session, error } = await supabaseClient.auth.signUp({
-      email: email,
-      password: password
-    });
-
-    if (error) {
-      alert('สมัครไม่สำเร็จ: ' + error.message);
-      return;
-    }
-
-    const { error: insertError } = await supabaseClient.from('users').insert([
-      {
-        id: user.id,
-        name: name,
-        department: department,
-        role: 'User'
-      }
-    ]);
-
-    if (insertError) {
-      alert('บันทึกข้อมูลผู้ใช้ล้มเหลว: ' + insertError.message);
-      return;
-    }
-
-    alert('สมัครสมาชิกสำเร็จ!');
-    form.reset();
-    window.location.href = "index.html";
+  const { user, session, error } = await supabaseClient.auth.signUp({
+    email: email,
+    password: password
   });
+
+  if (error) {
+    alert('สมัครไม่สำเร็จ: ' + error.message);
+    return;
+  }
+
+  // เพิ่มข้อมูลผู้ใช้ในตาราง users
+  const { error: insertError } = await supabaseClient.from('users').insert([
+    {
+      id: user.id,
+      name: name,
+      department: department,
+      role: 'User'
+    }
+  ]);
+
+  if (insertError) {
+    alert('บันทึกข้อมูลผู้ใช้ล้มเหลว: ' + insertError.message);
+    return;
+  }
+
+  alert('สมัครสมาชิกสำเร็จ!');
+  form.reset();
+  window.location.href = "index.html";
+});
+
   </script>
 
 </body>
