@@ -72,7 +72,7 @@
   <!-- Supabase + Script -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const supabase = supabase.createClient('https://leave-system.supabase.co', 'YOUR_ANON_KEY');
+    const supabase = supabase.createClient('https://bokajbbrctsuqeyvykgb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw');
 
     document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -95,7 +95,7 @@
         if (userProfile?.role === "hr" || userProfile?.role === "manager") {
           window.location.href = "dashboard_hr.html";
         } else {
-          window.location.href = "dashboard_employee.html";
+          window.location.href = "dashboard_user.html";
         }
       }
     });
