@@ -94,16 +94,18 @@
       }
 
       // ✅ ดึง role จากตาราง users
-      const { data: userProfile, error: profileError } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+     const { data: userProfile, error: profileError } = await supabase
+  .from("users")
+  .select("role")
+  .eq("id", user.id)
+  .limit(1)
+  .maybeSingle();
 
-      if (profileError) {
-        alert("โหลดข้อมูลผู้ใช้ล้มเหลว: " + profileError.message);
-        return;
-      }
+if (profileError) {
+  alert("โหลดข้อมูลผู้ใช้ล้มเหลว: " + profileError.message);
+  return;
+}
+
 
       if (userProfile?.role === "HR" || userProfile?.role === "Manager") {
         window.location.href = "dashboard_hr.html";
