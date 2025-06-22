@@ -3,55 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <title>แบบฟอร์มขอลา</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #dfe9f3, #ffffff);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .form-container {
+      background: #fff;
+      border-radius: 15px;
+      padding: 2rem 2.5rem;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #4b4b4b;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background-color: #4b7bec;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background-color: #3867d6;
+    }
+  </style>
 </head>
 <body>
 
-  <h2>แบบฟอร์มขอลา</h2>
+  <div class="form-container">
+    <h2>แบบฟอร์มขอลา</h2>
 
-  <form id="leaveForm">
-    <label>ชื่อผู้ใช้</label>
-    <select id="userSelect" name="user_id" required>
-      <option value="">-- เลือกผู้ใช้ --</option>
-    </select>
+    <form id="leaveForm">
+      <div class="mb-3">
+        <label for="userSelect" class="form-label">ชื่อผู้ใช้</label>
+        <select class="form-select" id="userSelect" name="user_id" required>
+          <option value="">-- เลือกผู้ใช้ --</option>
+        </select>
+      </div>
 
-    <br/><br/>
+      <div class="mb-3">
+        <label class="form-label">ประเภทการลา</label>
+        <select class="form-select" name="leave_type" required>
+          <option value="ลากิจ">ลากิจ</option>
+          <option value="ลาป่วย">ลาป่วย</option>
+        </select>
+      </div>
 
-    <label>ประเภทการลา</label>
-    <select name="leave_type" required>
-      <option value="ลากิจ">ลากิจ</option>
-      <option value="ลาป่วย">ลาป่วย</option>
-    </select>
+      <div class="mb-3">
+        <label class="form-label">เหตุผล</label>
+        <textarea class="form-control" name="reason" rows="3" required></textarea>
+      </div>
 
-    <br/><br/>
+      <div class="mb-3">
+        <label class="form-label">วันที่เริ่ม</label>
+        <input type="date" class="form-control" name="date_start" required />
+      </div>
 
-    <label>เหตุผล</label>
-    <textarea name="reason" required></textarea>
+      <div class="mb-3">
+        <label class="form-label">วันที่สิ้นสุด</label>
+        <input type="date" class="form-control" name="date_end" required />
+      </div>
 
-    <br/><br/>
+      <div class="d-grid">
+        <button type="submit" class="btn btn-primary">ส่งคำขอ</button>
+      </div>
+    </form>
+  </div>
 
-    <label>วันที่เริ่ม</label>
-    <input type="date" name="date_start" required />
-
-    <br/><br/>
-
-    <label>วันที่สิ้นสุด</label>
-    <input type="date" name="date_end" required />
-
-    <br/><br/>
-
-    <button type="submit">ส่งคำขอ</button>
-  </form>
-
+  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
   <script>
-    // กำหนด Supabase URL และ Anon Key ของคุณ
     const SUPABASE_URL = "https://leave-system.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw"; // <-- ใส่คีย์จริงของคุณ
 
-    // สร้าง client เชื่อมต่อ Supabase
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // โหลดรายชื่อผู้ใช้จากตาราง users แล้วเติมลง select
     async function loadUsers() {
       const { data, error } = await supabase.from('users').select('id, name');
       if (error) {
@@ -62,7 +102,7 @@
       const userSelect = document.getElementById('userSelect');
       data.forEach(user => {
         const option = document.createElement('option');
-        option.value = user.id; // ใช้ id เป็นค่า value
+        option.value = user.id;
         option.textContent = user.name;
         userSelect.appendChild(option);
       });
@@ -70,25 +110,22 @@
 
     loadUsers();
 
-    // จับ submit form
     document.getElementById('leaveForm').addEventListener('submit', async e => {
       e.preventDefault();
 
       const form = e.target;
       const formData = new FormData(form);
 
-      // สร้างอ็อบเจกต์ข้อมูลจากฟอร์ม
       const leaveData = {
         user_id: formData.get('user_id'),
         leave_type: formData.get('leave_type'),
         reason: formData.get('reason'),
         date_start: formData.get('date_start'),
         date_end: formData.get('date_end'),
-        status: 'pending', // กำหนดสถานะเริ่มต้น
+        status: 'pending',
         created_at: new Date().toISOString()
       };
 
-      // ส่งข้อมูลไปเก็บในตาราง leave_requests
       const { data, error } = await supabase.from('leave_requests').insert([leaveData]);
 
       if (error) {
