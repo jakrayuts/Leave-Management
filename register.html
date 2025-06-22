@@ -109,43 +109,48 @@
 loadDepartments();
 
 // ✅ สมัครสมาชิก (แบบ v2)
-  document.getElementById('registerForm').addEventListener('submit', async e => {
-    e.preventDefault();
+document.getElementById('registerForm').addEventListener('submit', async e => {
+  e.preventDefault();
 
-    const form = e.target;
-    const name = form.name.value;
-    const email = form.email.value;
-    const password = form.password.value;
-    const department = form.department.value;
+  const form = e.target;
+  const name = form.name.value;
+  const email = form.email.value;
+  const password = form.password.value;
+  const department = form.department.value;
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password
-    });
+  // ✅ เรียก signUp แบบ object
+  const { data, error } = await supabaseClient.auth.signUp({
+    email: email,
+    password: password
+  });
 
-    if (error) {
-      alert('สมัครไม่สำเร็จ: ' + error.message);
-      return;
-    }
+  if (error) {
+    alert('สมัครไม่สำเร็จ: ' + error.message);
+    return;
+  }
 
-    const user = data.user;
+  const user = data.user;
 
-    const { error: insertError } = await supabase.from('users').insert({
+  // ✅ บันทึกข้อมูลเพิ่มในตาราง users
+  const { error: insertError } = await supabaseClient.from('users').insert([
+    {
       id: user.id,
       name,
       department,
       role: 'User'
-    });
-
-    if (insertError) {
-      alert('บันทึกข้อมูลผู้ใช้ล้มเหลว: ' + insertError.message);
-      return;
     }
+  ]);
 
-    alert('สมัครสมาชิกสำเร็จ!');
-    form.reset();
-    window.location.href = "index.html";
-  });
+  if (insertError) {
+    alert('บันทึกข้อมูลผู้ใช้ล้มเหลว: ' + insertError.message);
+    return;
+  }
+
+  alert('สมัครสมาชิกสำเร็จ!');
+  form.reset();
+  window.location.href = "index.html";
+});
+
   </script>
 
 </body>
