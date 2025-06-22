@@ -80,30 +80,30 @@
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    const supabase = Supabase.createClient(
-      'https://leave-system.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw' // <-- ใส่ Anon Key ที่แท้จริงของคุณ
-    );
+<script>
+  // เรียกใช้ตัวแปร global ชื่อ supabase ตัวพิมพ์เล็กทั้งหมด
+  const supabase = supabase.createClient(
+    'https://leave-system.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
+  );
 
-   async function loadDepartments() {
-  const { data, error } = await supabase.from('departments').select('dept_name');
-  if (error) {
-    console.error('โหลดแผนกล้มเหลว:', error.message);
-    return;
+  async function loadDepartments() {
+    const { data, error } = await supabase.from('departments').select('dept_name');
+    if (error) {
+      console.error('โหลดแผนกล้มเหลว:', error.message);
+      return;
+    }
+
+    const deptSelect = document.getElementById('departmentSelect');
+    data.forEach(row => {
+      const option = document.createElement('option');
+      option.value = row.dept_name;
+      option.textContent = row.dept_name;
+      deptSelect.appendChild(option);
+    });
   }
 
-  const deptSelect = document.getElementById('departmentSelect');
-  data.forEach(row => {
-    const option = document.createElement('option');
-    option.value = row.dept_name;        // ✅ เก็บค่าเป็นชื่อแผนก
-    option.textContent = row.dept_name;  // แสดงชื่อแผนก
-    deptSelect.appendChild(option);
-  });
-}
-
-
-    loadDepartments(); // ✅ ต้องเรียกใช้งานที่นี่
+  loadDepartments();
 
     // ✅ จัดการการสมัครสมาชิก
     document.getElementById('registerForm').addEventListener('submit', async e => {
