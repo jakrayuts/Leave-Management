@@ -38,8 +38,28 @@
         `<li>${leave.leave_type} | ${leave.date_start} → ${leave.date_end} (${leave.status})</li>`
       ).join('');
     }
-
     fetchUserLeaveRequests();
+async function showLeaveSummary() {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('leave_days, date_start')
+    .eq('user_id', user.id)
+    .eq('status', 'approved');
+
+  if (error) return;
+
+  const currentYear = new Date().getFullYear();
+  const totalLeave = data
+    .filter(l => new Date(l.date_start).getFullYear() === currentYear)
+    .reduce((sum, r) => sum + parseFloat(r.leave_days), 0);
+
+  document.getElementById('leaveSummary').innerHTML = `<b>คุณลาแล้วทั้งหมด ${totalLeave} วัน ในปี ${currentYear}</b>`;
+}
+showLeaveSummary();
+
+    
   </script>
 </body>
 </html>
