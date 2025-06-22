@@ -1,0 +1,60 @@
+<!-- ✅ หน้า Register -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>สมัครสมาชิก</title>
+</head>
+<body>
+  <h2>ลงทะเบียนผู้ใช้ใหม่</h2>
+  <form id="registerForm">
+    <label>ชื่อ</label><br />
+    <input type="text" name="name" required><br /><br />
+
+    <label>อีเมล</label><br />
+    <input type="email" name="email" required><br /><br />
+
+    <label>รหัสผ่าน</label><br />
+    <input type="password" name="password" required><br /><br />
+
+    <label>แผนก</label><br />
+    <input type="text" name="department" required><br /><br />
+
+    <button type="submit">สมัครสมาชิก</button>
+  </form>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabase = supabase.createClient('https://leave-system.supabase.co', 'YOUR-ANON-KEY');
+
+    document.getElementById('registerForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const form = e.target;
+      const name = form.name.value;
+      const email = form.email.value;
+      const password = form.password.value;
+      const department = form.department.value;
+
+      const { data, error } = await supabase.auth.signUp({
+        email, password
+      });
+
+      if (error) return alert('สมัครไม่สำเร็จ: ' + error.message);
+
+      // สร้าง record ในตาราง users
+      const { user } = data;
+      await supabase.from('users').insert({
+        id: user.id,
+        name,
+        department,
+        role: 'User'
+      });
+
+      alert('สมัครสมาชิกสำเร็จ!');
+      form.reset();
+    });
+  </script>
+</body>
+</html>
+
+
