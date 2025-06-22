@@ -69,10 +69,13 @@
     </div>
   </div>
 
-  <!-- Supabase + Script -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- ✅ Supabase UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.6/dist/umd/supabase.min.js"></script>
   <script>
-    const supabase = supabase.createClient('https://bokajbbrctsuqeyvykgb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw');
+    const supabase = window.supabase.createClient(
+      'https://bokajbbrctsuqeyvykgb.supabase.co', // 🔁 เปลี่ยนเป็นของคุณ
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'                     // 🔁 เปลี่ยนเป็นของคุณ
+    );
 
     document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -80,23 +83,32 @@
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { user, session, error } = await supabase.auth.signIn({
+        email,
+        password
+      });
 
       if (error) {
         alert("เข้าสู่ระบบล้มเหลว: " + error.message);
-      } else {
-        // ดึง role จากตาราง users
-        const { data: userProfile } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", data.user.id)
-          .single();
+        return;
+      }
 
-        if (userProfile?.role === "hr" || userProfile?.role === "manager") {
-          window.location.href = "dashboard_hr.html";
-        } else {
-          window.location.href = "dashboard_user.html";
-        }
+      // ✅ ดึง role จากตาราง users
+      const { data: userProfile, error: profileError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) {
+        alert("โหลดข้อมูลผู้ใช้ล้มเหลว: " + profileError.message);
+        return;
+      }
+
+      if (userProfile?.role === "HR" || userProfile?.role === "Manager") {
+        window.location.href = "dashboard_hr.html";
+      } else {
+        window.location.href = "dashboard_user.html";
       }
     });
   </script>
