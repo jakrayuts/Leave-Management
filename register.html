@@ -78,32 +78,30 @@
     </div>
   </div>
 
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  // เรียกใช้ตัวแปร global ชื่อ supabase ตัวพิมพ์เล็กทั้งหมด
-  const supabase = supabase.createClient(
-    'https://leave-system.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
-  );
+ <!-- ✅ Supabase JS (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.6/dist/umd/supabase.min.js"></script>
+  <script>
+    const supabaseUrl = 'https://leave-system.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'; // 🔁 ใส่ Anon Key ของคุณตรงนี้
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-  async function loadDepartments() {
-    const { data, error } = await supabase.from('departments').select('dept_name');
-    if (error) {
-      console.error('โหลดแผนกล้มเหลว:', error.message);
-      return;
+    // ✅ โหลดแผนก
+    async function loadDepartments() {
+      const { data, error } = await supabaseClient.from('departments').select('dept_name');
+      if (error) {
+        console.error('โหลดแผนกล้มเหลว:', error.message);
+        return;
+      }
+
+      const deptSelect = document.getElementById('departmentSelect');
+      data.forEach(row => {
+        const option = document.createElement('option');
+        option.value = row.dept_name;
+        option.textContent = row.dept_name;
+        deptSelect.appendChild(option);
+      });
     }
-
-    const deptSelect = document.getElementById('departmentSelect');
-    data.forEach(row => {
-      const option = document.createElement('option');
-      option.value = row.dept_name;
-      option.textContent = row.dept_name;
-      deptSelect.appendChild(option);
-    });
-  }
-
-  loadDepartments();
+loadDepartments();
 
     // ✅ จัดการการสมัครสมาชิก
     document.getElementById('registerForm').addEventListener('submit', async e => {
