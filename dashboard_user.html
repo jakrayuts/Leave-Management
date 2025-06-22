@@ -1,0 +1,45 @@
+<!-- dashboard_user.html -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>แดชบอร์ดพนักงาน</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    h2 { color: #4b2a86; }
+  </style>
+</head>
+<body>
+  <h2>ยินดีต้อนรับ พนักงาน</h2>
+  <div id="leaveSummary"></div>
+  <h3>รายการคำขอลา</h3>
+  <ul id="leaveList"></ul>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabase = supabase.createClient(
+      'https://leave-system.supabase.co',
+      'YOUR-ANON-KEY'
+    );
+
+    async function fetchUserLeaveRequests() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) location.href = 'login.html';
+
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) return alert('โหลดข้อมูลผิดพลาด');
+
+      document.getElementById('leaveList').innerHTML = data.map(leave =>
+        `<li>${leave.leave_type} | ${leave.date_start} → ${leave.date_end} (${leave.status})</li>`
+      ).join('');
+    }
+
+    fetchUserLeaveRequests();
+  </script>
+</body>
+</html>
