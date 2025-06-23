@@ -8,171 +8,168 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: sans-serif; padding: 2rem; background-color: #f9f9f9; }
-    h2, h4 { color: #4b2a86; margin-bottom: 1rem; }
-    canvas { max-width: 100%; }
+    h2 { color: #4b2a86; margin-bottom: 1rem; }
   </style>
 </head>
 <body>
-<div class="container">
-  <div class="d-flex justify-content-between mb-3">
-    <h2>แดชบอร์ดผู้ดูแลระบบ</h2>
-    <button onclick="logout()" class="btn btn-outline-danger">ออกจากระบบ</button>
-  </div>
+  <div class="container">
+    <div class="d-flex justify-content-between mb-3">
+      <h2>แดชบอร์ดผู้ดูแลระบบ</h2>
+      <button onclick="logout()" class="btn btn-outline-danger">ออกจากระบบ</button>
+    </div>
 
-  <div class="row mb-4">
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header bg-info text-white">สรุปการลาแต่ละประเภท</div>
-        <div class="card-body">
-          <canvas id="typeChart"></canvas>
-        </div>
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <h5>สรุปการลาแต่ละประเภท (รายเดือน)</h5>
+        <canvas id="leaveTypeChart"></canvas>
       </div>
     </div>
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header bg-success text-white">สรุปการลาแต่ละแผนก</div>
-        <div class="card-body">
-          <canvas id="deptChart"></canvas>
-        </div>
-      </div>
-    </div>
+
+    <h5 class="mt-4">คำขอลาทั้งหมด</h5>
+    <table class="table table-bordered" id="adminLeaveTable">
+      <thead class="table-light">
+        <tr>
+          <th>ชื่อ</th>
+          <th>ประเภท</th>
+          <th>เริ่ม</th>
+          <th>สิ้นสุด</th>
+          <th>จำนวนวัน</th>
+          <th>สถานะ</th>
+          <th>การจัดการ</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
-  <h4>รายการคำขอลาทั้งหมด</h4>
-  <table class="table table-bordered" id="adminLeaveTable">
-    <thead class="table-light">
-    <tr>
-      <th>ชื่อ</th>
-      <th>ประเภท</th>
-      <th>เริ่ม</th>
-      <th>สิ้นสุด</th>
-      <th>จำนวนวัน</th>
-      <th>สถานะ</th>
-      <th>การจัดการ</th>
-    </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const supabase = createClient(
-  'https://bokajbbrctsuqeyvykgb.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
-);
+    const supabase = createClient(
+      'https://bokajbbrctsuqeyvykgb.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
+    );
 
-async function init() {
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
-  if (!user) return location.href = 'login.html';
+    async function init() {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (!user) return location.href = 'login.html';
 
-  const { data: userInfo, error } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+      const { data: userInfo } = await supabase.from('users').select('role').eq('id', user.id).single();
+      const role = userInfo.role?.toLowerCase();
+      if (role !== 'admin' && role !== 'hr') {
+        alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+        return location.href = 'login.html';
+      }
 
-  const role = userInfo?.role?.toLowerCase();
-  if (!userInfo || (role !== 'admin' && role !== 'hr')) {
-    alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
-    return location.href = 'login.html';
-  }
+      loadLeaveRequests();
+      loadLeaveTypeChart();
+    }
 
-  loadLeaveRequests();
-  renderCharts();
-}
+    async function loadLeaveRequests() {
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .select('id, leave_type, date_start, date_end, leave_days, status, user_id, users(name)')
+        .order('created_at', { ascending: false });
 
-async function loadLeaveRequests() {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .select('id, leave_type, date_start, date_end, leave_days, status, user_id, users(name)')
-    .order('created_at', { ascending: false });
+      if (error) return alert('โหลดข้อมูลล้มเหลว: ' + error.message);
 
-  const tbody = document.querySelector('#adminLeaveTable tbody');
-  tbody.innerHTML = '';
+      const tbody = document.querySelector('#adminLeaveTable tbody');
+      tbody.innerHTML = '';
 
-  data.forEach(row => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${row.users?.name || 'ไม่พบชื่อ'}</td>
-      <td>${row.leave_type}</td>
-      <td>${formatDate(row.date_start)}</td>
-      <td>${formatDate(row.date_end)}</td>
-      <td>${row.leave_days}</td>
-      <td><span class="badge bg-${statusColor(row.status)}">${row.status}</span></td>
-      <td>
-        ${row.status === 'pending' ? `
-          <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
-          <button class="btn btn-danger btn-sm" onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>
-        ` : '-'}
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.users?.name || 'ไม่พบชื่อ'}</td>
+          <td>${row.leave_type}</td>
+          <td>${formatDate(row.date_start)}</td>
+          <td>${formatDate(row.date_end)}</td>
+          <td>${row.leave_days}</td>
+          <td><span class="badge bg-${statusColor(row.status)}">${row.status}</span></td>
+          <td>
+            ${row.status === 'pending' ? `
+              <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
+              <button class="btn btn-danger btn-sm" onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>
+            ` : '-'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
-function formatDate(d) {
-  return new Date(d).toLocaleDateString('th-TH', {
-    year: 'numeric', month: 'short', day: 'numeric'
-  });
-}
+    function formatDate(d) {
+      return new Date(d).toLocaleDateString('th-TH', {
+        year: 'numeric', month: 'short', day: 'numeric'
+      });
+    }
 
-function statusColor(status) {
-  return { approved: 'success', rejected: 'danger', pending: 'secondary' }[status] || 'light';
-}
+    function statusColor(status) {
+      return {
+        approved: 'success',
+        rejected: 'danger',
+        pending: 'secondary'
+      }[status] || 'light';
+    }
 
-window.updateStatus = async (id, status) => {
-  const { error } = await supabase
-    .from('leave_requests')
-    .update({ status })
-    .eq('id', id);
+    window.updateStatus = async (id, status) => {
+      const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
+      if (error) alert('อัปเดตสถานะไม่สำเร็จ: ' + error.message);
+      else loadLeaveRequests();
+    };
 
-  if (error) alert('อัปเดตสถานะล้มเหลว: ' + error.message);
-  else loadLeaveRequests();
-};
+    window.logout = async function() {
+      const { error } = await supabase.auth.signOut();
+      if (error) return alert('ออกจากระบบไม่สำเร็จ: ' + error.message);
+      location.href = 'index.html';
+    };
 
-window.logout = async function () {
-  const { error } = await supabase.auth.signOut();
-  if (error) alert('ออกจากระบบไม่สำเร็จ: ' + error.message);
-  else location.href = 'index.html';
-};
+    async function loadLeaveTypeChart() {
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .select('leave_type, date_start, leave_days')
+        .eq('status', 'approved');
 
-async function renderCharts() {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .select('leave_type, users(department), leave_days')
-    .eq('status', 'approved');
+      if (error) return;
 
-  if (error) return;
+      const chartData = {};
+      data.forEach(row => {
+        const month = new Date(row.date_start).toLocaleString('th-TH', { month: 'short' });
+        const key = `${row.leave_type}-${month}`;
+        chartData[key] = (chartData[key] || 0) + parseFloat(row.leave_days);
+      });
 
-  const typeMap = {}, deptMap = {};
-  for (const r of data) {
-    typeMap[r.leave_type] = (typeMap[r.leave_type] || 0) + Number(r.leave_days);
-    const dept = r.users?.department || 'ไม่ระบุ';
-    deptMap[dept] = (deptMap[dept] || 0) + Number(r.leave_days);
-  }
+      const months = [...new Set(data.map(r => new Date(r.date_start).toLocaleString('th-TH', { month: 'short' })))];
+      const types = [...new Set(data.map(r => r.leave_type))];
 
-  new Chart(document.getElementById('typeChart'), {
-    type: 'bar',
-    data: {
-      labels: Object.keys(typeMap),
-      datasets: [{ label: 'จำนวนวันลา', data: Object.values(typeMap), backgroundColor: '#4b2a86' }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } } }
-  });
+      const datasets = types.map(type => {
+        return {
+          label: type,
+          data: months.map(month => chartData[`${type}-${month}`] || 0),
+          backgroundColor: randomColor()
+        };
+      });
 
-  new Chart(document.getElementById('deptChart'), {
-    type: 'bar',
-    data: {
-      labels: Object.keys(deptMap),
-      datasets: [{ label: 'จำนวนวันลา', data: Object.values(deptMap), backgroundColor: '#198754' }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } } }
-  });
-}
+      new Chart(document.getElementById('leaveTypeChart'), {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'จำนวนวันลาแต่ละประเภท (รายเดือน)' }
+          }
+        }
+      });
+    }
 
-init();
-</script>
+    function randomColor() {
+      return 'hsl(' + Math.floor(Math.random() * 360) + ', 70%, 70%)';
+    }
+
+    init();
+  </script>
 </body>
 </html>
