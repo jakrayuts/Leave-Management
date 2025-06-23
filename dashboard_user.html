@@ -125,22 +125,13 @@
     if (!user) location.href = 'login.html';
 
     // โหลดชื่อผู้ใช้จาก profiles
-    async function showUserName() {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .single();
+    function showUserName() {
+  const fullName = user.user_metadata.full_name || user.email || 'พนักงาน';
+  document.getElementById('welcome').textContent = `ยินดีต้อนรับคุณ ${fullName}`;
+}
 
-      const welcomeEl = document.getElementById('welcome');
-      if (error || !data) {
-        welcomeEl.textContent = 'ยินดีต้อนรับ';
-      } else {
-        welcomeEl.textContent = `ยินดีต้อนรับคุณ ${data.full_name}`;
-      }
-    }
+showUserName();
 
-    showUserName();
 
     const form = document.getElementById('leaveForm');
 
