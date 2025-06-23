@@ -119,13 +119,18 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
     );
 
-   let user;
-const { data: userData } = await supabase.auth.getUser();
-user = userData.user;
-if (!user) location.href = 'login.html';
+async function init() {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) return (location.href = 'login.html');
 
-// ✅ ดึงชื่อจากตาราง users โดยใช้ user.id ตรงกับ users.id
-async function showUserName() {
+  // เรียก showUserName แบบส่ง user เข้าไป
+  await showUserName(user);
+
+  // เรียกฟังก์ชันอื่น เช่น loadLeaveHistory() ได้ที่นี่
+}
+
+async function showUserName(user) {
   const { data, error } = await supabase
     .from('users')
     .select('name')
@@ -140,7 +145,7 @@ async function showUserName() {
   }
 }
 
-showUserName();
+init(); // ✅ เริ่มต้นระบบอย่างถูกลำดับ
 
 
     const form = document.getElementById('leaveForm');
