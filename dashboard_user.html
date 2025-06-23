@@ -119,15 +119,15 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
     );
 
-    let user;
-    const { data: userData } = await supabase.auth.getUser();
-    user = userData.user;
-    if (!user) location.href = 'login.html';
+   let user;
+const { data: userData } = await supabase.auth.getUser();
+user = userData.user;
+if (!user) location.href = 'login.html';
 
-    // โหลดชื่อผู้ใช้จาก profiles
-   async function showUserName() {
+// ✅ ดึงชื่อจากตาราง users โดยใช้ user.id ตรงกับ users.id
+async function showUserName() {
   const { data, error } = await supabase
-    .from('users')  // 🟡 เปลี่ยนชื่อตารางตรงนี้ถ้าชื่อต่าง
+    .from('users')
     .select('name')
     .eq('id', user.id)
     .single();
@@ -136,10 +136,9 @@
   if (error || !data) {
     welcomeEl.textContent = 'ยินดีต้อนรับ';
   } else {
-    welcomeEl.textContent = `ยินดีต้อนรับคุณ ${data.full_name}`;
+    welcomeEl.textContent = `ยินดีต้อนรับคุณ ${data.name}`;
   }
 }
-
 
 showUserName();
 
