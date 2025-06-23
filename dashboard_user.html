@@ -39,9 +39,10 @@
 </head>
 <body>
   <div class="container">
-    <div class="btn-group">
-      <button onclick="location.href='leave.html'" class="btn btn-primary">ขอลา</button>
-      <button onclick="logout()" class="btn logout-btn">ออกจากระบบ</button>
+    <!-- ปุ่ม -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <button onclick="location.href='leave.html'" class="btn btn-primary px-4">ขอลา</button>
+      <button onclick="logout()" class="btn btn-danger px-4">ออกจากระบบ</button>
     </div>
 
     <h3 class="text-center">สรุปประเภทการลา</h3>
@@ -71,8 +72,8 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    const supabaseUrl = 'https://leave-system.supabase.co';
-    const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'; // เปลี่ยนตรงนี้
+    const supabaseUrl = 'https://bokajbbrctsuqeyvykgb.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'; // เปลี่ยนตรงนี้
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // โหลดข้อมูลการลา
