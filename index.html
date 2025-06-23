@@ -95,7 +95,7 @@
     const { data: userProfile, error: profileError } = await supabase
       .from("users")
       .select("role")
-      .eq("id", user.UID)
+      .eq("id", user.id)
       .maybeSingle();
 
     if (profileError) {
@@ -107,11 +107,11 @@
       alert("ไม่พบข้อมูลผู้ใช้ในตาราง users");
       return;
     }
-
+console.log("User ID:", user.id);
     if (userProfile.role === "hr" || userProfile.role === "manager") {
       window.location.href = "dashboard_hr.html";
     } else {
-      window.location.href = "dashboard_employee.html";
+      window.location.href = "dashboard_user.html";
     }
   });
 </script>
