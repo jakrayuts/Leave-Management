@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard พนักงาน</title>
+  <title>Dashboard นักศึกษาฝึกงาน</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
@@ -40,10 +40,56 @@
 <body>
   <div class="container">
     <!-- ปุ่ม -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-      <button onclick="location.href='leave.html'" class="btn btn-primary px-4">ขอลา</button>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">    
       <button onclick="logout()" class="btn btn-danger px-4">ออกจากระบบ</button>
     </div>
+<!-- ✅ ฟอร์มยื่นคำขอลา -->
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white">ฟอร์มยื่นคำขอลา</div>
+  <div class="card-body">
+    <form id="leaveForm">
+      <div class="mb-3">
+        <label class="form-label">ประเภทการลา</label>
+        <select class="form-select" name="leave_type" required>
+          <option value="">-- เลือก --</option>              
+          <option value="ลากิจ">ลากิจ</option>
+          <option value="ลาป่วย">ลาป่วย</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">วันที่เริ่ม</label>
+          <input type="date" class="form-control" name="date_start" id="date_start" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">เวลาเริ่ม</label>
+          <input type="time" class="form-control" name="time_start" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">วันที่สิ้นสุด</label>
+          <input type="date" class="form-control" name="date_end" id="date_end" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">เวลาสิ้นสุด</label>
+          <input type="time" class="form-control" name="time_end" required>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">จำนวนวันที่ลา</label>
+        <input type="text" class="form-control" id="leave_days" readonly>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">เหตุผล</label>
+        <textarea class="form-control" name="reason" rows="2" required></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-success">ยื่นคำขอลา</button>
+    </form>
+  </div>
+</div>
 
     <h3 class="text-center">สรุปประเภทการลา</h3>
     <div class="chart-container">
@@ -69,86 +115,113 @@
   </div>
 
   <!-- Supabase -->
-  <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+ <script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    const supabaseUrl = 'https://bokajbbrctsuqeyvykgb.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'; // เปลี่ยนตรงนี้
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabaseUrl = 'https://bokajbbrctsuqeyvykgb.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'; // ใช้คีย์จริงของคุณ
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // โหลดข้อมูลการลา
-   function renderChart(data) {
-  // ✅ กำหนดประเภทการลาที่ต้องการให้แสดงเสมอ
-  const leaveTypes = ['ลากิจ', 'ลาป่วย'];
+  async function showLeaveSummary() {
+    const { data, error } = await supabase
+      .from('leave_requests')
+      .select('leave_type');
 
-  // ✅ นับจำนวนแต่ละประเภท
-  const typeCounts = data.reduce((acc, item) => {
-    acc[item.leave_type] = (acc[item.leave_type] || 0) + 1;
-    return acc;
-  }, {});
+    if (error) {
+      alert("โหลดข้อมูลลาล้มเหลว: " + error.message);
+      return;
+    }
 
-  // ✅ สร้าง array ใหม่ให้มีค่าครบทุกประเภท
-  const counts = leaveTypes.map(type => typeCounts[type] || 0);
+    const leaveTypes = ['ลากิจ', 'ลาป่วย'];
+    const typeCounts = data.reduce((acc, item) => {
+      acc[item.leave_type] = (acc[item.leave_type] || 0) + 1;
+      return acc;
+    }, {});
+    const counts = leaveTypes.map(type => typeCounts[type] || 0);
 
-  const ctx = document.getElementById('leaveChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'pie',
-    data: {
-      labels: leaveTypes,
-      datasets: [{
-        label: 'การลา',
-        data: counts,
-        backgroundColor: ['#4b7bec', '#fc5c65', '#fed330']
-      }]
+    const ctx = document.getElementById('leaveChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: leaveTypes,
+        datasets: [{
+          label: 'การลา',
+          data: counts,
+          backgroundColor: ['#4b7bec', '#fc5c65']
+        }]
+      }
+    });
+  }
+
+  async function loadLeaveHistory() {
+    const { data, error } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .order('date_start', { ascending: false });
+
+    if (error) {
+      alert("โหลดประวัติการลาล้มเหลว: " + error.message);
+      return;
+    }
+
+    const tbody = document.getElementById('leaveTableBody');
+    tbody.innerHTML = '';
+    data.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.date_start}</td>
+        <td>${row.date_end}</td>
+        <td>${row.leave_type}</td>
+        <td>${row.status}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('leaveForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+
+    const date_start = formData.get('date_start');
+    const date_end = formData.get('date_end');
+    const start = new Date(date_start);
+    const end = new Date(date_end);
+    const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+    const leaveData = {
+      leave_type: formData.get('leave_type'),
+      date_start,
+      date_end,
+      time_start: formData.get('time_start'),
+      time_end: formData.get('time_end'),
+      reason: formData.get('reason'),
+      leave_days: diffDays,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase.from('leave_requests').insert([leaveData]);
+
+    if (error) {
+      alert('ยื่นคำขอลาไม่สำเร็จ: ' + error.message);
+    } else {
+      alert('ส่งคำขอลาสำเร็จ');
+      form.reset();
+      loadLeaveHistory();
+      showLeaveSummary();
     }
   });
-}
 
+  function logout() {
+    sessionStorage.clear();
+    location.href = 'login.html';
+  }
 
-    // ตารางประวัติ
-    function renderTable(data) {
-      const tbody = document.getElementById('leaveTableBody');
-      tbody.innerHTML = '';
+  // เรียกตอนโหลดหน้า
+  showLeaveSummary();
+  loadLeaveHistory();
+</script>
 
-      data.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${row.date_start}</td>
-          <td>${row.date_end}</td>
-          <td>${row.leave_type}</td>
-          <td>${row.status}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // กราฟประเภทการลา
-    function renderChart(data) {
-      const typeCounts = data.reduce((acc, item) => {
-        acc[item.leave_type] = (acc[item.leave_type] || 0) + 1;
-        return acc;
-      }, {});
-
-      const ctx = document.getElementById('leaveChart').getContext('2d');
-      new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: Object.keys(typeCounts),
-          datasets: [{
-            label: 'การลา',
-            data: Object.values(typeCounts),
-            backgroundColor: ['#4b7bec', '#fc5c65', '#fed330']
-          }]
-        }
-      });
-    }
-
-    function logout() {
-      sessionStorage.clear();
-      location.href = 'login.html'; // กลับไปหน้า login
-    }
-
-    loadDashboard();
-  </script>
 </body>
 </html>
