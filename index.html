@@ -74,7 +74,7 @@
 
   const supabase = createClient(
     'https://bokajbbrctsuqeyvykgb.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'  // 👈 แทนที่ด้วย anon key ของคุณ
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
   );
 
   document.getElementById("loginForm").addEventListener("submit", async function (e) {
@@ -85,13 +85,12 @@
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      alert("เข้าสู่ระบบล้มเหลว: " + error.message);
+    if (error || !data || !data.user) {
+      alert("เข้าสู่ระบบล้มเหลว: " + (error?.message || "ไม่พบข้อมูลผู้ใช้"));
       return;
     }
 
-    const { user } = data;
-
+    const user = data.user;
     const { data: userProfile, error: profileError } = await supabase
       .from("users")
       .select("role")
@@ -107,14 +106,18 @@
       alert("ไม่พบข้อมูลผู้ใช้ในตาราง users");
       return;
     }
-console.log("User ID:", user.id);
-    if (userProfile.role === "hr" || userProfile.role === "Admin") {
+
+    const role = userProfile.role?.toLowerCase();
+    console.log("User ID:", user.id, "Role:", role);
+
+    if (role === "hr" || role === "admin") {
       window.location.href = "dashboard_hr.html";
     } else {
       window.location.href = "dashboard_user.html";
     }
   });
 </script>
+
 
 
 
