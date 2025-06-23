@@ -2,79 +2,113 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>ฟอร์มขอลา</title>
+  <title>แบบฟอร์มขอลา</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
     body {
+      background-color: #f4f6f9;
+      font-family: 'Segoe UI', sans-serif;
       padding: 2rem;
-      background-color: #f8f9fa;
     }
-    h2 {
+    .card {
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2, h4 {
       color: #4b2a86;
+    }
+    .badge {
+      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="d-flex justify-content-between mb-3">
-      <h2>ฟอร์มขอลา</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 id="welcome">กำลังโหลดชื่อ...</h2>
       <button class="btn btn-outline-danger" onclick="logout()">ออกจากระบบ</button>
     </div>
 
-    <form id="leaveForm">
-      <div class="mb-3">
-        <label class="form-label">ประเภทการลา</label>
-        <select class="form-select" name="leave_type" required>
-          <option value="">-- เลือก --</option>
-          <option value="ลากิจ">ลากิจ</option>
-          <option value="ลาป่วย">ลาป่วย</option>
-        </select>
-      </div>
+    <!-- ฟอร์มยื่นคำขอลา -->
+    <div class="card mb-5">
+      <div class="card-header bg-primary text-white">ฟอร์มยื่นคำขอลา</div>
+      <div class="card-body">
+        <form id="leaveForm">
+          <div class="mb-3">
+            <label class="form-label">ประเภทการลา</label>
+            <select class="form-select" name="leave_type" required>
+              <option value="">-- เลือก --</option>
+              <option value="ลากิจ">ลากิจ</option>
+              <option value="ลาป่วย">ลาป่วย</option>
+            </select>
+          </div>
 
-      <div class="mb-3">
-        <label class="form-label">รูปแบบการลา</label>
-        <select class="form-select" name="leave_mode" id="leave_mode" required>
-          <option value="">-- เลือก --</option>
-          <option value="full">ลาทั้งวัน</option>
-          <option value="half_morning">ลาครึ่งวัน (เช้า)</option>
-          <option value="half_afternoon">ลาครึ่งวัน (บ่าย)</option>
-          <option value="hourly">ลาเป็นชั่วโมง</option>
-        </select>
-      </div>
+          <div class="mb-3">
+            <label class="form-label">รูปแบบการลา</label>
+            <select class="form-select" name="leave_mode" id="leave_mode" required>
+              <option value="">-- เลือก --</option>
+              <option value="full">ลาทั้งวัน</option>
+              <option value="half_morning">ลาครึ่งวัน (เช้า)</option>
+              <option value="half_afternoon">ลาครึ่งวัน (บ่าย)</option>
+              <option value="hourly">ลาเป็นชั่วโมง</option>
+            </select>
+          </div>
 
-      <div class="mb-3">
-        <label class="form-label">วันที่เริ่ม</label>
-        <input type="date" class="form-control" name="date_start" required />
-      </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">วันที่เริ่ม</label>
+              <input type="date" class="form-control" name="date_start" required />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">วันที่สิ้นสุด</label>
+              <input type="date" class="form-control" name="date_end" required />
+            </div>
+          </div>
 
-      <div class="mb-3">
-        <label class="form-label">วันที่สิ้นสุด</label>
-        <input type="date" class="form-control" name="date_end" required />
-      </div>
+          <div class="row time-fields d-none">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">เวลาเริ่มต้น</label>
+              <input type="time" class="form-control" name="time_start" />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">เวลาสิ้นสุด</label>
+              <input type="time" class="form-control" name="time_end" />
+            </div>
+          </div>
 
-      <div class="mb-3 time-fields d-none">
-        <label class="form-label">เวลาเริ่มต้น</label>
-        <input type="time" class="form-control" name="time_start" />
-      </div>
+          <div class="mb-3">
+            <label class="form-label">เหตุผล</label>
+            <textarea class="form-control" name="reason" rows="2" required></textarea>
+          </div>
 
-      <div class="mb-3 time-fields d-none">
-        <label class="form-label">เวลาสิ้นสุด</label>
-        <input type="time" class="form-control" name="time_end" />
-      </div>
+          <div class="mb-3">
+            <label class="form-label">จำนวนวันลา (คำนวณอัตโนมัติ)</label>
+            <input type="text" class="form-control" name="leave_days" readonly />
+          </div>
 
-      <div class="mb-3">
-        <label class="form-label">เหตุผล</label>
-        <textarea class="form-control" name="reason" rows="2" required></textarea>
+          <button type="submit" class="btn btn-success">ยื่นคำขอลา</button>
+        </form>
       </div>
+    </div>
 
-      <div class="mb-3">
-        <label class="form-label">จำนวนวันลา (คำนวณอัตโนมัติ)</label>
-        <input type="text" class="form-control" name="leave_days" readonly />
-      </div>
-
-      <button type="submit" class="btn btn-success">ยื่นคำขอลา</button>
-    </form>
+    <!-- ตารางแสดงประวัติการลา -->
+    <h4 class="mb-3">ประวัติการลา</h4>
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped bg-white" id="leaveTable">
+        <thead class="table-light">
+          <tr>
+            <th>ประเภท</th>
+            <th>รูปแบบ</th>
+            <th>วันที่เริ่ม</th>
+            <th>วันที่สิ้นสุด</th>
+            <th>เวลา</th>
+            <th>จำนวนวัน</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
   <script type="module">
@@ -89,6 +123,24 @@
     const { data: userData } = await supabase.auth.getUser();
     user = userData.user;
     if (!user) location.href = 'login.html';
+
+    // โหลดชื่อผู้ใช้จาก profiles
+    async function showUserName() {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+      const welcomeEl = document.getElementById('welcome');
+      if (error || !data) {
+        welcomeEl.textContent = 'ยินดีต้อนรับ';
+      } else {
+        welcomeEl.textContent = `ยินดีต้อนรับคุณ ${data.full_name}`;
+      }
+    }
+
+    showUserName();
 
     const form = document.getElementById('leaveForm');
 
@@ -173,8 +225,55 @@
         alert('ส่งคำขอลาสำเร็จ');
         form.reset();
         document.querySelectorAll('.time-fields').forEach(f => f.classList.add('d-none'));
+        loadLeaveHistory();
       }
     });
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function renderStatus(status) {
+      const map = {
+        pending: 'secondary',
+        approved: 'success',
+        rejected: 'danger'
+      };
+      return `<span class="badge bg-${map[status] || 'light'}">${status}</span>`;
+    }
+
+    async function loadLeaveHistory() {
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      const tbody = document.querySelector('#leaveTable tbody');
+      tbody.innerHTML = '';
+
+      if (error || !data.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">ไม่มีประวัติการลา</td></tr>`;
+        return;
+      }
+
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.leave_type}</td>
+          <td>${row.leave_mode || '-'}</td>
+          <td>${formatDate(row.date_start)}</td>
+          <td>${formatDate(row.date_end)}</td>
+          <td>${(row.time_start || '-') + ' - ' + (row.time_end || '-')}</td>
+          <td>${row.leave_days}</td>
+          <td>${renderStatus(row.status)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    loadLeaveHistory();
 
     function logout() {
       supabase.auth.signOut().then(() => location.href = 'login.html');
