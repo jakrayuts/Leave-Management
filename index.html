@@ -69,6 +69,9 @@
     </div>
   </div>
 
+<!-- ใส่ก่อนสคริปต์ของคุณ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.6/dist/umd/supabase.min.js"></script>
+
 <script>
   const supabase = window.supabase.createClient(
     'https://bokajbbrctsuqeyvykgb.supabase.co',
@@ -111,9 +114,8 @@
     } else {
       window.location.href = "dashboard_employee.html";
     }
-  }); // <<== เพิ่มปิด function และ event listener
+  });
 </script>
-
 
 
 </body>
