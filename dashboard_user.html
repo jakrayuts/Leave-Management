@@ -281,9 +281,19 @@ init(); // ✅ เริ่มต้นระบบอย่างถูกล�
 
     loadLeaveHistory();
 
-    function logout() {
-      supabase.auth.signOut().then(() => location.href = 'index.html');
+     window.logout = async function() {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      alert('ออกจากระบบไม่สำเร็จ: ' + error.message);
+      return;
     }
+    // เปลี่ยนจาก 'login.html' เป็น 'index.html'
+    location.href = 'index.html';
+  } catch (err) {
+    alert('เกิดข้อผิดพลาด: ' + err.message);
+  }
+};
   </script>
 </body>
 </html>
