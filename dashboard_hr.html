@@ -34,94 +34,113 @@
   </div>
 
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-    const supabase = createClient(
-      'https://bokajbbrctsuqeyvykgb.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
-    );
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
+  const supabase = createClient(
+    'https://bokajbbrctsuqeyvykgb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
+  );
+
+  async function init() {
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
-    if (!user) location.href = 'login.html';
-
-    // ตรวจสอบว่าเป็นแอดมินหรือไม่ (เช่น role === 'admin')
-   const { data: userInfo } = await supabase
-  .from('users')
-  .select('role')
-  .eq('id', user.id)
-  .single();
-
-const role = userInfo.role?.toLowerCase();
-if (role !== 'admin' && role !== 'hr') {
-  alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
-  location.href = 'login.html';
-}
-
-
-    // โหลดคำขอลาทั้งหมด พร้อมชื่อ
-    async function loadLeaveRequests() {
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select('id, leave_type, date_start, date_end, leave_days, status, user_id, users(name)')
-        .order('created_at', { ascending: false });
-
-      if (error) return alert('โหลดข้อมูลล้มเหลว: ' + error.message);
-
-      const tbody = document.querySelector('#adminLeaveTable tbody');
-      tbody.innerHTML = '';
-
-      data.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${row.users?.name || 'ไม่พบชื่อ'}</td>
-          <td>${row.leave_type}</td>
-          <td>${formatDate(row.date_start)}</td>
-          <td>${formatDate(row.date_end)}</td>
-          <td>${row.leave_days}</td>
-          <td><span class="badge bg-${statusColor(row.status)}">${row.status}</span></td>
-          <td>
-            ${row.status === 'pending' ? `
-              <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
-              <button class="btn btn-danger btn-sm" onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>
-            ` : '-'}
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+    if (!user) {
+      location.href = 'login.html';
+      return;
     }
 
-    function formatDate(d) {
-      return new Date(d).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'short', day: 'numeric'
-      });
+    const { data: userInfo, error: roleError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (roleError || !userInfo) {
+      alert("โหลดข้อมูลผู้ใช้ล้มเหลว");
+      location.href = 'login.html';
+      return;
     }
 
-    function statusColor(status) {
-      return {
-        approved: 'success',
-        rejected: 'danger',
-        pending: 'secondary'
-      }[status] || 'light';
-    }
-
-    window.updateStatus = async (id, status) => {
-      const { error } = await supabase
-        .from('leave_requests')
-        .update({ status })
-        .eq('id', id);
-
-      if (error) {
-        alert('อัปเดตสถานะไม่สำเร็จ: ' + error.message);
-      } else {
-        loadLeaveRequests();
-      }
-    };
-
-    function logout() {
-      supabase.auth.signOut().then(() => location.href = 'login.html');
+    const role = userInfo.role?.toLowerCase();
+    if (role !== 'admin' && role !== 'hr') {
+      alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+      location.href = 'login.html';
+      return;
     }
 
     loadLeaveRequests();
-  </script>
+  }
+
+  async function loadLeaveRequests() {
+    const { data, error } = await supabase
+      .from('leave_requests')
+      .select('id, leave_type, date_start, date_end, leave_days, status, user_id, users(name)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      alert('โหลดข้อมูลล้มเหลว: ' + error.message);
+      return;
+    }
+
+    const tbody = document.querySelector('#adminLeaveTable tbody');
+    tbody.innerHTML = '';
+
+    data.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.users?.name || 'ไม่พบชื่อ'}</td>
+        <td>${row.leave_type}</td>
+        <td>${formatDate(row.date_start)}</td>
+        <td>${formatDate(row.date_end)}</td>
+        <td>${row.leave_days}</td>
+        <td><span class="badge bg-${statusColor(row.status)}">${row.status}</span></td>
+        <td>
+          ${row.status === 'pending' ? `
+            <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
+            <button class="btn btn-danger btn-sm" onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>
+          ` : '-'}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function formatDate(d) {
+    return new Date(d).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  function statusColor(status) {
+    return {
+      approved: 'success',
+      rejected: 'danger',
+      pending: 'secondary'
+    }[status] || 'light';
+  }
+
+  window.updateStatus = async (id, status) => {
+    const { error } = await supabase
+      .from('leave_requests')
+      .update({ status })
+      .eq('id', id);
+
+    if (error) {
+      alert('อัปเดตสถานะไม่สำเร็จ: ' + error.message);
+    } else {
+      loadLeaveRequests();
+    }
+  };
+
+  function logout() {
+    supabase.auth.signOut().then(() => location.href = 'login.html');
+  }
+
+  // 👇 เรียกฟังก์ชันเริ่มต้น
+  init();
+</script>
+
 </body>
 </html>
