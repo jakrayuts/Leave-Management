@@ -153,16 +153,40 @@
     });
   }
 
-  async function loadLeaveHistory() {
-    const { data, error } = await supabase
-      .from('leave_requests')
-      .select('*')
-      .order('date_start', { ascending: false });
+ async function loadLeaveHistory() {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError || !authData?.user) {
+    alert("ไม่สามารถระบุตัวตนผู้ใช้ได้");
+    return;
+  }
 
-    if (error) {
-      alert("โหลดประวัติการลาล้มเหลว: " + error.message);
-      return;
-    }
+  const userId = authData.user.id;
+
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date_start', { ascending: false });
+
+  if (error) {
+    alert("โหลดประวัติการลาล้มเหลว: " + error.message);
+    return;
+  }
+
+  const tbody = document.getElementById('leaveTableBody');
+  tbody.innerHTML = '';
+  data.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.date_start}</td>
+      <td>${row.date_end}</td>
+      <td>${row.leave_type}</td>
+      <td>${row.status}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 
     const tbody = document.getElementById('leaveTableBody');
     tbody.innerHTML = '';
