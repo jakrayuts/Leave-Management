@@ -190,16 +190,19 @@
     const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
     const leaveData = {
-      leave_type: formData.get('leave_type'),
-      date_start,
-      date_end,
-      time_start: formData.get('time_start'),
-      time_end: formData.get('time_end'),
-      reason: formData.get('reason'),
-      leave_days: diffDays,
-      status: 'pending',
-      created_at: new Date().toISOString()
-    };
+  user_id: user.id, // ต้องใช้ auth
+  leave_type: formData.get('leave_type'),
+  reason: formData.get('reason'),
+  date_start: formData.get('date_start'),
+  time_start: formData.get('time_start'),
+  date_end: formData.get('date_end'),
+  time_end: formData.get('time_end'),
+  leave_days: diffDays,
+  status: 'pending',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+};
+
 
     const { error } = await supabase.from('leave_requests').insert([leaveData]);
 
