@@ -76,22 +76,33 @@
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // โหลดข้อมูลการลา
-    const userId = sessionStorage.getItem('user_id'); // หรือดึงจาก auth user
+   function renderChart(data) {
+  // ✅ กำหนดประเภทการลาที่ต้องการให้แสดงเสมอ
+  const leaveTypes = ['ลากิจ', 'ลาป่วย'];
 
-    async function loadDashboard() {
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('user_id', userId);
+  // ✅ นับจำนวนแต่ละประเภท
+  const typeCounts = data.reduce((acc, item) => {
+    acc[item.leave_type] = (acc[item.leave_type] || 0) + 1;
+    return acc;
+  }, {});
 
-      if (error) {
-        alert('โหลดข้อมูลลาล้มเหลว: ' + error.message);
-        return;
-      }
+  // ✅ สร้าง array ใหม่ให้มีค่าครบทุกประเภท
+  const counts = leaveTypes.map(type => typeCounts[type] || 0);
 
-      renderTable(data);
-      renderChart(data);
+  const ctx = document.getElementById('leaveChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: leaveTypes,
+      datasets: [{
+        label: 'การลา',
+        data: counts,
+        backgroundColor: ['#4b7bec', '#fc5c65', '#fed330']
+      }]
     }
+  });
+}
+
 
     // ตารางประวัติ
     function renderTable(data) {
