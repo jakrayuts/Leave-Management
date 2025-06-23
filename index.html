@@ -108,9 +108,7 @@
     }
 
     const role = userProfile.role?.toLowerCase();
-    console.log("User ID:", user.id, "Role:", role);
-
-    if (role === "hr" || role === "admin") {
+  if (role === "admin" || role === "hr") {
       window.location.href = "dashboard_hr.html";
     } else {
       window.location.href = "dashboard_user.html";
