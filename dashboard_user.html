@@ -2,169 +2,141 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>แดชบอร์ดพนักงาน</title>
+  <title>Dashboard พนักงาน</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: sans-serif;
+      background: #f4f6f9;
+      font-family: 'Segoe UI', sans-serif;
       padding: 2rem;
-      background-color: #f8f9fa;
     }
-    h2 {
-      color: #4b2a86;
+
+    .chart-container {
+      width: 100%;
+      max-width: 500px;
+      margin: auto;
+    }
+
+    .table-container {
+      margin-top: 2rem;
+    }
+
+    .btn-group {
       margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .logout-btn {
+      background-color: #ff6b6b;
+      color: white;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>ยินดีต้อนรับ พนักงาน</h2>
-    <div id="leaveSummary" class="mb-3"></div>
-
-    <!-- ✅ ฟอร์มยื่นคำขอลา -->
-    <div class="card mb-4">
-      <div class="card-header bg-primary text-white">ฟอร์มยื่นคำขอลา</div>
-      <div class="card-body">
-        <form id="leaveForm">
-          <div class="mb-3">
-            <label class="form-label">ประเภทการลา</label>
-            <select class="form-select" name="leave_type" required>
-              <option value="">-- เลือก --</option>
-              <option value="ลาพักร้อน">ลาพักร้อน</option>
-              <option value="ลากิจ">ลากิจ</option>
-              <option value="ลาป่วย">ลาป่วย</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">วันที่เริ่ม</label>
-            <input type="date" class="form-control" name="date_start" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">วันที่สิ้นสุด</label>
-            <input type="date" class="form-control" name="date_end" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">เหตุผล</label>
-            <textarea class="form-control" name="reason" rows="2" required></textarea>
-          </div>
-          <button type="submit" class="btn btn-success">ยื่นคำขอลา</button>
-        </form>
-      </div>
+    <div class="btn-group">
+      <button onclick="location.href='leave.html'" class="btn btn-primary">ขอลา</button>
+      <button onclick="logout()" class="btn logout-btn">ออกจากระบบ</button>
     </div>
 
-    <!-- ✅ ตารางแสดงประวัติการลา -->
-    <h4>ประวัติการลา</h4>
-    <table class="table table-bordered" id="leaveTable">
-      <thead>
-        <tr>
-          <th>ประเภท</th>
-          <th>เริ่ม</th>
-          <th>สิ้นสุด</th>
-          <th>จำนวนวัน</th>
-          <th>สถานะ</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <h3 class="text-center">สรุปประเภทการลา</h3>
+    <div class="chart-container">
+      <canvas id="leaveChart"></canvas>
+    </div>
+
+    <div class="table-container">
+      <h4>ประวัติการลา</h4>
+      <table class="table table-bordered table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>วันที่เริ่ม</th>
+            <th>วันที่สิ้นสุด</th>
+            <th>ประเภท</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="leaveTableBody">
+          <!-- รายการจะถูกเพิ่มด้วย JavaScript -->
+        </tbody>
+      </table>
+    </div>
   </div>
 
+  <!-- Supabase -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    const supabase = createClient(
-      'https://bokajbbrctsuqeyvykgb.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
-    );
+    const supabaseUrl = 'https://leave-system.supabase.co';
+    const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'; // เปลี่ยนตรงนี้
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    let user;
+    // โหลดข้อมูลการลา
+    const userId = sessionStorage.getItem('user_id'); // หรือดึงจาก auth user
 
-    // ✅ โหลดข้อมูลผู้ใช้
-    const { data: userData } = await supabase.auth.getUser();
-    user = userData.user;
-    if (!user) location.href = 'login.html';
-
-    // ✅ โหลดสรุปวันลา
-    async function showLeaveSummary() {
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select('leave_days, date_start')
-        .eq('user_id', user.id)
-        .eq('status', 'approved');
-
-      if (error) return;
-
-      const currentYear = new Date().getFullYear();
-      const totalLeave = data
-        .filter(l => new Date(l.date_start).getFullYear() === currentYear)
-        .reduce((sum, r) => sum + parseFloat(r.leave_days), 0);
-
-      document.getElementById('leaveSummary').innerHTML = `
-        <div class="alert alert-info">
-          คุณลาแล้วทั้งหมด <b>${totalLeave} วัน</b> ในปี ${currentYear}
-        </div>`;
-    }
-
-    // ✅ โหลดตารางประวัติการลา
-    async function loadLeaveHistory() {
+    async function loadDashboard() {
       const { data, error } = await supabase
         .from('leave_requests')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('user_id', userId);
 
-      const tbody = document.querySelector('#leaveTable tbody');
+      if (error) {
+        alert('โหลดข้อมูลลาล้มเหลว: ' + error.message);
+        return;
+      }
+
+      renderTable(data);
+      renderChart(data);
+    }
+
+    // ตารางประวัติ
+    function renderTable(data) {
+      const tbody = document.getElementById('leaveTableBody');
       tbody.innerHTML = '';
 
       data.forEach(row => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${row.leave_type}</td>
           <td>${row.date_start}</td>
           <td>${row.date_end}</td>
-          <td>${row.leave_days}</td>
+          <td>${row.leave_type}</td>
           <td>${row.status}</td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    // ✅ จัดการการ submit form
-    document.getElementById('leaveForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      const form = e.target;
-      const leave_type = form.leave_type.value;
-      const date_start = form.date_start.value;
-      const date_end = form.date_end.value;
-      const reason = form.reason.value;
+    // กราฟประเภทการลา
+    function renderChart(data) {
+      const typeCounts = data.reduce((acc, item) => {
+        acc[item.leave_type] = (acc[item.leave_type] || 0) + 1;
+        return acc;
+      }, {});
 
-      const start = new Date(date_start);
-      const end = new Date(date_end);
-      const diff = (end - start) / (1000 * 60 * 60 * 24) + 1;
+      const ctx = document.getElementById('leaveChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(typeCounts),
+          datasets: [{
+            label: 'การลา',
+            data: Object.values(typeCounts),
+            backgroundColor: ['#4b7bec', '#fc5c65', '#fed330']
+          }]
+        }
+      });
+    }
 
-      const { error } = await supabase.from('leave_requests').insert([{
-        user_id: user.id,
-        leave_type,
-        date_start,
-        date_end,
-        reason,
-        leave_days: diff,
-        status: 'pending'
-      }]);
+    function logout() {
+      sessionStorage.clear();
+      location.href = 'login.html'; // กลับไปหน้า login
+    }
 
-      if (error) {
-        alert('ยื่นคำขอลาไม่สำเร็จ: ' + error.message);
-      } else {
-        alert('ส่งคำขอลาสำเร็จ');
-        form.reset();
-        loadLeaveHistory();
-        showLeaveSummary();
-      }
-    });
-
-    // ✅ เรียกตอนเริ่มต้น
-    showLeaveSummary();
-    loadLeaveHistory();
+    loadDashboard();
   </script>
 </body>
 </html>
