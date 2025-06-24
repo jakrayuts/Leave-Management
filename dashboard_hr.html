@@ -127,9 +127,14 @@
 }
 
   async function updateStatus(id, status) {
-    const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
-    if (error) alert('อัปเดตสถานะไม่สำเร็จ: ' + error.message);
-    else await loadLeaveRequests();
+    const { data, error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
+if (error) {
+  alert('อัปเดตสถานะไม่สำเร็จ: ' + error.message);
+  console.error(error);
+} else {
+  await loadLeaveRequests();
+}
+
   }
 
   function formatDate(d) {
