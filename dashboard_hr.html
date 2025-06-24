@@ -57,7 +57,12 @@
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) return location.href = 'index.html';
 
-    const { data: userInfo, error: profileError } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
+    const { data: userInfo, error: profileError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
     if (profileError || !userInfo) {
       alert('ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
       return location.href = 'index.html';
@@ -73,74 +78,85 @@
     await loadLeaveTypeChart();
   }
 
- async function loadLeaveRequests() {
-  const { data: leaveData, error } = await supabase
-    .from('leave_requests')
-    .select('*')
-    .order('created_at', { ascending: false });
+  async function loadLeaveRequests() {
+    const { data: leaveData, error } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    alert('โหลดข้อมูลล้มเหลว: ' + error.message);
-    return;
+    if (error) {
+      alert('โหลดข้อมูลล้มเหลว: ' + error.message);
+      return;
+    }
+
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, name, department');
+
+    if (usersError) {
+      alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + usersError.message);
+      return;
+    }
+
+    const userMap = {};
+    users.forEach(u => {
+      userMap[u.id] = {
+        name: u.name || 'ไม่พบชื่อ',
+        department: u.department || '-'
+      };
+    });
+
+    const tbody = document.querySelector('#adminLeaveTable tbody');
+    tbody.innerHTML = '';
+
+    for (const row of leaveData) {
+      const userInfo = userMap[row.user_id] || { name: 'ไม่พบชื่อ', department: '-' };
+      const name = userInfo.name;
+      const department = userInfo.department;
+      const start = `${formatDate(row.date_start)} ${row.time_start || ''}`;
+      const end = `${formatDate(row.date_end)} ${row.time_end || ''}`;
+      const mode = leaveModeLabel(row.leave_mode);
+      const statusHtml = `<span class="badge bg-${statusColor(row.status)}">${row.status}</span>`;
+
+      const manageButtons = row.status === 'pending' ? `
+        <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
+        <button class="btn btn-danger btn-sm" onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>
+      ` : '-';
+
+      tbody.innerHTML += `
+        <tr>
+          <td>${name}</td>
+          <td>${department}</td>
+          <td>${row.leave_type}</td>
+          <td>${start}</td>
+          <td>${end}</td>
+          <td>${row.leave_days}</td>
+          <td>${mode}</td>
+          <td>${row.reason || '-'}</td>
+          <td>${statusHtml}</td>
+          <td>${manageButtons}</td>
+        </tr>
+      `;
+    }
   }
 
-  const { data: users, error: usersError } = await supabase
-    .from('users')
-    .select('id, name');
-
-  if (usersError) {
-    alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + usersError.message);
-    return;
+  async function updateStatus(id, status) {
+    const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
+    if (error) {
+      alert('อัปเดตสถานะไม่สำเร็จ: ' + error.message);
+      console.error(error);
+    } else {
+      await loadLeaveRequests();       // โหลดตารางใหม่
+      await loadLeaveTypeChart();     // โหลดกราฟใหม่
+    }
   }
-
-  const userMap = {};
-  users.forEach(u => userMap[u.id] = u.name || 'ไม่พบชื่อ');
-
-  const tbody = document.querySelector('#adminLeaveTable tbody');
-  tbody.innerHTML = '';
-
-  for (const row of leaveData) {
-    const name = userMap[row.user_id] || 'ไม่พบชื่อ';
-    const start = `${formatDate(row.date_start)} ${row.time_start || ''}`;
-    const end = `${formatDate(row.date_end)} ${row.time_end || ''}`;
-    const mode = leaveModeLabel(row.leave_mode);
-    const statusHtml = `<span class="badge bg-${statusColor(row.status)}">${row.status}</span>`;
-
-    const manageButtons = row.status === 'pending' ? `
-      <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
-      <button class="btn btn-danger btn-sm" onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>
-    ` : '-';
-
-    tbody.innerHTML += `
-      <tr>
-        <td>${name}</td>
-        <td>${department}</td>
-        <td>${row.leave_type}</td>
-        <td>${start}</td>
-        <td>${end}</td>
-        <td>${row.leave_days}</td>
-        <td>${mode}</td>
-        <td>${row.reason || '-'}</td>
-        <td>${statusHtml}</td>
-        <td>${manageButtons}</td>
-      </tr>
-    `;
-  }
-}
-
-async function updateStatus(id, status) {
-  const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
-  if (error) {
-    alert('อัปเดตสถานะไม่สำเร็จ: ' + error.message);
-    console.error(error);
-  } else {    
-    await loadLeaveRequests();         // โหลดตารางใหม่
-    await loadLeaveTypeChart();       // โหลดกราฟใหม่
-  }
-}
 
   function formatDate(d) {
-    return new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+    return new Date(d).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   }
 
   function leaveModeLabel(mode) {
@@ -161,7 +177,11 @@ async function updateStatus(id, status) {
   }
 
   async function loadLeaveTypeChart() {
-    const { data, error } = await supabase.from('leave_requests').select('leave_type, date_start, leave_days').eq('status', 'approved');
+    const { data, error } = await supabase
+      .from('leave_requests')
+      .select('leave_type, date_start, leave_days')
+      .eq('status', 'approved');
+
     if (error) return;
 
     const chartData = {};
@@ -180,17 +200,20 @@ async function updateStatus(id, status) {
       backgroundColor: randomColor()
     }));
 
-    new Chart(document.getElementById('leaveTypeChart').getContext('2d'), {
-      type: 'bar',
-      data: { labels: months, datasets },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'top' },
-          title: { display: true, text: 'จำนวนวันลาแต่ละประเภท (รายเดือน)' }
+    const ctx = document.getElementById('leaveTypeChart')?.getContext('2d');
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: { labels: months, datasets },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'จำนวนวันลาแต่ละประเภท (รายเดือน)' }
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   function randomColor() {
@@ -208,5 +231,6 @@ async function updateStatus(id, status) {
 
   init();
 </script>
+
 </body>
 </html>
