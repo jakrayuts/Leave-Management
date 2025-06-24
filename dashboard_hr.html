@@ -187,6 +187,7 @@
       await loadLeaveRequests();
       await loadLeaveTypeChart();
       await loadUsersForRoles();
+      await loadLeaveDepartmentChart();
     }
 
     async function loadLeaveRequests() {
@@ -234,6 +235,74 @@
           </tr>`;
       });
     }
+async function loadLeaveDepartmentChart() {
+  // ดึงข้อมูล join users กับ leave_requests (status = approved)
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('leave_type, date_start, leave_days, user:user_id(id, department)')
+    .eq('status', 'approved');
+
+  if (error) {
+    console.error('โหลดข้อมูลแผนกลาล้มเหลว:', error);
+    return;
+  }
+
+  // รวมข้อมูลนับวันลาตามแผนก-ประเภท-เดือน
+  const chartData = {};
+  data.forEach(row => {
+    const month = new Date(row.date_start).toLocaleString('th-TH', { month: 'short' });
+    const department = row.user?.department || 'ไม่ระบุแผนก';
+    const key = `${department}-${row.leave_type}-${month}`;
+    chartData[key] = (chartData[key] || 0) + parseFloat(row.leave_days);
+  });
+
+  // หา unique แผนก, ประเภทลา, เดือน
+  const departments = [...new Set(data.map(r => r.user?.department || 'ไม่ระบุแผนก'))];
+  const leaveTypes = [...new Set(data.map(r => r.leave_type))];
+  const months = [...new Set(data.map(r => new Date(r.date_start).toLocaleString('th-TH', { month: 'short' })))];
+
+  // สร้าง datasets แยกตามแผนก + ประเภทลา รวมกันในกราฟเดียว
+  // แต่ละ dataset จะเป็นหนึ่งประเภทลา แสดงตามเดือน สำหรับแผนกนั้น
+  // หรือถ้าต้องการแยกกราฟตามแผนก ก็อาจทำแยก canvas ได้อีกที
+
+  // วิธีง่าย: สร้าง datasets แยกตาม "แผนก - ประเภทลา" ตัวอย่างนี้ทำแค่ตามแผนกและแยกประเภท
+
+  const datasets = [];
+
+  departments.forEach(dept => {
+    leaveTypes.forEach(type => {
+      datasets.push({
+        label: `${dept} - ${type}`,
+        data: months.map(month => chartData[`${dept}-${type}-${month}`] || 0),
+        backgroundColor: randomColor()
+      });
+    });
+  });
+
+  const ctx = document.getElementById('leaveDepartmentChart')?.getContext('2d');
+  if (ctx) {
+    if(window.departmentChart) window.departmentChart.destroy();  // เคลียร์กราฟเก่า
+    window.departmentChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          title: { display: true, text: 'จำนวนวันลาแต่ละแผนก (รายเดือน)' },
+          tooltip: { mode: 'index', intersect: false }
+        },
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true }
+        }
+      }
+    });
+  }
+}
 
     async function loadLeaveTypeChart() {
       const { data, error } = await supabase.from('leave_requests').select('leave_type, date_start, leave_days').eq('status', 'approved');
@@ -277,6 +346,7 @@
       }
       await loadLeaveRequests();
       await loadLeaveTypeChart();
+      await loadLeaveDepartmentChart();
     }
 
     async function loadUsersForRoles() {
