@@ -282,7 +282,7 @@
     }
 
     async function loadUsersForRoles() {
-      const { data, error } = await supabase.from('users').select('id, name, email, department, role');
+      const { data, error } = await supabase.from('users').select('id, name,department, role');
       if (error) {
         alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
         return;
@@ -293,8 +293,7 @@
       data.forEach(user => {
         tbody.innerHTML += `
           <tr>
-            <td>${user.name}</td>
-            <td>${user.email || '-'}</td>
+            <td>${user.name}</td>            
             <td>${user.department || '-'}</td>
             <td>${user.role || '-'}</td>
             <td>
