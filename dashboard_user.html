@@ -111,189 +111,187 @@
     </div>
   </div>
 
-  <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+ <script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    const supabase = createClient(
-      'https://bokajbbrctsuqeyvykgb.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
-    );
+  const supabase = createClient(
+    'https://bokajbbrctsuqeyvykgb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
+  );
 
-async function init() {
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
-  if (!user) return (location.href = 'login.html');
+  let user; // ✅ ใช้งานได้ทุกฟังก์ชัน
 
-  // เรียก showUserName แบบส่ง user เข้าไป
-  await showUserName(user);
+  async function init() {
+    const { data: userData, error } = await supabase.auth.getUser();
+    user = userData?.user;
+    if (!user) return location.href = 'login.html';
 
-  // เรียกฟังก์ชันอื่น เช่น loadLeaveHistory() ได้ที่นี่
-}
-
-async function showUserName(user) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('name')
-    .eq('id', user.id)
-    .single();
-
-  const welcomeEl = document.getElementById('welcome');
-  if (error || !data) {
-    welcomeEl.textContent = 'ยินดีต้อนรับ';
-  } else {
-    welcomeEl.textContent = `ยินดีต้อนรับคุณ ${data.name}`;
+    await showUserName(user);
+    await loadLeaveHistory();
   }
-}
 
-init(); // ✅ เริ่มต้นระบบอย่างถูกลำดับ
+  async function showUserName(user) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('name')
+      .eq('id', user.id)
+      .single();
 
+    const welcomeEl = document.getElementById('welcome');
+    welcomeEl.textContent = error || !data
+      ? 'ยินดีต้อนรับ'
+      : `ยินดีต้อนรับคุณ ${data.name}`;
+  }
 
-    const form = document.getElementById('leaveForm');
+  const form = document.getElementById('leaveForm');
 
-    function calculateLeaveDays() {
-      const mode = form.leave_mode.value;
-      const dateStart = form.date_start.value;
-      const dateEnd = form.date_end.value || dateStart;
-      const timeStart = form.time_start.value;
-      const timeEnd = form.time_end.value;
-      let days = 0;
+  function calculateLeaveDays() {
+    const mode = form.leave_mode.value;
+    const dateStart = form.date_start.value;
+    const dateEnd = form.date_end.value || dateStart;
+    const timeStart = form.time_start.value;
+    const timeEnd = form.time_end.value;
+    let days = 0;
 
-      if (!dateStart) return;
+    if (!dateStart) return;
 
-      const start = new Date(dateStart);
-      const end = new Date(dateEnd);
+    const start = new Date(dateStart);
+    const end = new Date(dateEnd);
 
-      if (start > end) {
-        form.leave_days.value = '';
-        return;
-      }
-
-      if (mode === 'full') {
-        days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-      } else if (mode === 'half_morning' || mode === 'half_afternoon') {
-        days = 0.5;
-      } else if (mode === 'hourly') {
-        if (!timeStart || !timeEnd) return;
-        const [h1, m1] = timeStart.split(':').map(Number);
-        const [h2, m2] = timeEnd.split(':').map(Number);
-        const diffMins = (h2 * 60 + m2) - (h1 * 60 + m1);
-        if (diffMins <= 0) return;
-        days = (diffMins / 60) / 8;
-      }
-
-      form.leave_days.value = days.toFixed(2);
-    }
-
-    document.getElementById('leave_mode').addEventListener('change', e => {
-      const mode = e.target.value;
-      const timeFields = document.querySelectorAll('.time-fields');
-      timeFields.forEach(f => f.classList.toggle('d-none', mode !== 'hourly'));
-      calculateLeaveDays();
-    });
-
-    ['date_start', 'date_end', 'time_start', 'time_end'].forEach(name => {
-      form[name].addEventListener('change', calculateLeaveDays);
-    });
-
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-
-      const leave_type = form.leave_type.value;
-      const leave_mode = form.leave_mode.value;
-      const date_start = form.date_start.value;
-      const date_end = form.date_end.value || form.date_start.value;
-      const time_start = form.time_start.value || null;
-      const time_end = form.time_end.value || null;
-      const reason = form.reason.value;
-      const leave_days = parseFloat(form.leave_days.value);
-
-      if (!leave_days || leave_days <= 0) {
-        alert('กรุณาตรวจสอบวันที่/เวลา จำนวนวันลาไม่ถูกต้อง');
-        return;
-      }
-
-      const { error } = await supabase.from('leave_requests').insert([{
-        user_id: user.id,
-        leave_type,
-        leave_mode,
-        date_start,
-        date_end,
-        time_start,
-        time_end,
-        reason,
-        leave_days,
-        status: 'pending'
-      }]);
-
-      if (error) {
-        alert('บันทึกคำขอลาไม่สำเร็จ: ' + error.message);
-      } else {
-        alert('ส่งคำขอลาสำเร็จ');
-        form.reset();
-        document.querySelectorAll('.time-fields').forEach(f => f.classList.add('d-none'));
-        loadLeaveHistory();
-      }
-    });
-
-    function formatDate(dateStr) {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
-    }
-
-    function renderStatus(status) {
-      const map = {
-        pending: 'secondary',
-        approved: 'success',
-        rejected: 'danger'
-      };
-      return `<span class="badge bg-${map[status] || 'light'}">${status}</span>`;
-    }
-
-    async function loadLeaveHistory() {
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      const tbody = document.querySelector('#leaveTable tbody');
-      tbody.innerHTML = '';
-
-      if (error || !data.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">ไม่มีประวัติการลา</td></tr>`;
-        return;
-      }
-
-      data.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${row.leave_type}</td>
-          <td>${row.leave_mode || '-'}</td>
-          <td>${formatDate(row.date_start)}</td>
-          <td>${formatDate(row.date_end)}</td>
-          <td>${(row.time_start || '-') + ' - ' + (row.time_end || '-')}</td>
-          <td>${row.leave_days}</td>
-          <td>${renderStatus(row.status)}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    loadLeaveHistory();
-
-     window.logout = async function() {
-  try {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      alert('ออกจากระบบไม่สำเร็จ: ' + error.message);
+    if (start > end) {
+      form.leave_days.value = '';
       return;
     }
-    // เปลี่ยนจาก 'login.html' เป็น 'index.html'
-    location.href = 'index.html';
-  } catch (err) {
-    alert('เกิดข้อผิดพลาด: ' + err.message);
+
+    if (mode === 'full') {
+      days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    } else if (mode === 'half_morning' || mode === 'half_afternoon') {
+      days = 0.5;
+    } else if (mode === 'hourly') {
+      if (!timeStart || !timeEnd) return;
+      const [h1, m1] = timeStart.split(':').map(Number);
+      const [h2, m2] = timeEnd.split(':').map(Number);
+      const diffMins = (h2 * 60 + m2) - (h1 * 60 + m1);
+      if (diffMins <= 0) return;
+      days = (diffMins / 60) / 8;
+    }
+
+    form.leave_days.value = days.toFixed(2);
   }
-};
-  </script>
+
+  document.getElementById('leave_mode').addEventListener('change', e => {
+    const mode = e.target.value;
+    const timeFields = document.querySelectorAll('.time-fields');
+    timeFields.forEach(f => f.classList.toggle('d-none', mode !== 'hourly'));
+    calculateLeaveDays();
+  });
+
+  ['date_start', 'date_end', 'time_start', 'time_end'].forEach(name => {
+    form[name].addEventListener('change', calculateLeaveDays);
+  });
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const leave_type = form.leave_type.value;
+    const leave_mode = form.leave_mode.value;
+    const date_start = form.date_start.value;
+    const date_end = form.date_end.value || form.date_start.value;
+    const time_start = form.time_start.value || null;
+    const time_end = form.time_end.value || null;
+    const reason = form.reason.value;
+    const leave_days = parseFloat(form.leave_days.value);
+
+    if (!leave_days || leave_days <= 0) {
+      alert('กรุณาตรวจสอบวันที่/เวลา จำนวนวันลาไม่ถูกต้อง');
+      return;
+    }
+
+    const { error } = await supabase.from('leave_requests').insert([{
+      user_id: user.id,
+      leave_type,
+      leave_mode,
+      date_start,
+      date_end,
+      time_start,
+      time_end,
+      reason,
+      leave_days,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }]);
+
+    if (error) {
+      alert('บันทึกคำขอลาไม่สำเร็จ: ' + error.message);
+    } else {
+      alert('ส่งคำขอลาสำเร็จ');
+      form.reset();
+      document.querySelectorAll('.time-fields').forEach(f => f.classList.add('d-none'));
+      loadLeaveHistory();
+    }
+  });
+
+  function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function renderStatus(status) {
+    const map = {
+      pending: 'secondary',
+      approved: 'success',
+      rejected: 'danger'
+    };
+    return `<span class="badge bg-${map[status] || 'light'}">${status}</span>`;
+  }
+
+  async function loadLeaveHistory() {
+    const { data, error } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    const tbody = document.querySelector('#leaveTable tbody');
+    tbody.innerHTML = '';
+
+    if (error || !data.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">ไม่มีประวัติการลา</td></tr>`;
+      return;
+    }
+
+    data.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.leave_type}</td>
+        <td>${row.leave_mode || '-'}</td>
+        <td>${formatDate(row.date_start)}</td>
+        <td>${formatDate(row.date_end)}</td>
+        <td>${(row.time_start || '-') + ' - ' + (row.time_end || '-')}</td>
+        <td>${row.leave_days}</td>
+        <td>${renderStatus(row.status)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  window.logout = async function () {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        alert('ออกจากระบบไม่สำเร็จ: ' + error.message);
+        return;
+      }
+      location.href = 'index.html';
+    } catch (err) {
+      alert('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
+  // ✅ เรียก init() เมื่อโหลด script
+  init();
+</script>
+
 </body>
 </html>
