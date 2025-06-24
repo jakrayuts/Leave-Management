@@ -27,19 +27,19 @@
 
     <h5 class="mt-4">คำขอลาทั้งหมด</h5>
     <table class="table" id="adminLeaveTable">
-    <thead>
-      <tr>
-        <th>ชื่อ</th>
-        <th>ประเภท</th>
-        <th>เริ่ม</th>
-        <th>สิ้นสุด</th>
-        <th>จำนวนวัน</th>
-        <th>สถานะ</th>
-        <th>การจัดการ</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+      <thead>
+        <tr>
+          <th>ชื่อ</th>
+          <th>ประเภท</th>
+          <th>เริ่ม</th>
+          <th>สิ้นสุด</th>
+          <th>จำนวนวัน</th>
+          <th>สถานะ</th>
+          <th>การจัดการ</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
 <script type="module">
@@ -51,20 +51,25 @@
   );
 
   async function init() {
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user) return (location.href = 'index.html');
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+    if (!user) return location.href = 'index.html';
 
-    const { data: userInfo } = await supabase
+    const { data: userInfo, error: userError } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    const role = userInfo?.role?.toLowerCase();
+    if (userError || !userInfo) {
+      alert('โหลดข้อมูลผู้ใช้ล้มเหลว');
+      return location.href = 'index.html';
+    }
+
+    const role = userInfo.role?.toLowerCase();
     if (role !== 'admin' && role !== 'hr') {
       alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
-      return (location.href = 'index.html');
+      return location.href = 'index.html';
     }
 
     await loadLeaveRequests();
@@ -79,7 +84,6 @@
 
     if (error) return alert('โหลดข้อมูลล้มเหลว: ' + error.message);
 
-    // ดึงชื่อผู้ใช้ทั้งหมดมาเก็บใน map
     const { data: users } = await supabase.from('users').select('id, name');
     const userMap = {};
     users?.forEach(u => userMap[u.id] = u.name);
@@ -185,11 +189,10 @@
   window.logout = async function () {
     const { error } = await supabase.auth.signOut();
     if (error) return alert('ออกจากระบบไม่สำเร็จ: ' + error.message);
-    location.href = '/Leave-Management/index.html';
+    location.href = 'index.html';
   };
 
   init();
 </script>
-
 </body>
 </html>
