@@ -72,54 +72,59 @@
     await loadLeaveTypeChart();
   }
 
-  async function loadLeaveRequests() {
-    const { data: leaveData, error } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
-    if (error) {
-      alert('โหลดข้อมูลล้มเหลว: ' + error.message);
-      return;
-    }
+ async function loadLeaveRequests() {
+  const { data: leaveData, error } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-    const { data: users, error: usersError } = await supabase.from('users').select('id, name');
-    if (usersError) {
-      alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + usersError.message);
-      return;
-    }
-
-    const userMap = {};
-    users.forEach(u => userMap[u.id] = u.name);
-
-    const tbody = document.querySelector('#adminLeaveTable tbody');
-    tbody.innerHTML = '';
-
-    leaveData.forEach(row => {
-      const { data: users } = await supabase.from('users').select('id, name');
-      const userMap = {};
-      users?.forEach(u => userMap[u.id] = u.name);
-      const start = `${formatDate(row.date_start)} ${row.time_start || ''}`;
-      const end = `${formatDate(row.date_end)} ${row.time_end || ''}`;
-      const mode = leaveModeLabel(row.leave_mode);
-      const statusHtml = `<span class="badge bg-${statusColor(row.status)}">${row.status}</span>`;
-
-      const manageButtons = row.status === 'pending' ? `
-        <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
-        <button class="btn btn-danger btn-sm" onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>
-      ` : '-';
-
-      tbody.innerHTML += `
-        <tr>
-          <td>${name}</td>
-          <td>${row.leave_type}</td>
-          <td>${start}</td>
-          <td>${end}</td>
-          <td>${row.leave_days}</td>
-          <td>${mode}</td>
-          <td>${row.reason || '-'}</td>
-          <td>${statusHtml}</td>
-          <td>${manageButtons}</td>
-        </tr>
-      `;
-    });
+  if (error) {
+    alert('โหลดข้อมูลล้มเหลว: ' + error.message);
+    return;
   }
+
+  const { data: users, error: usersError } = await supabase
+    .from('users')
+    .select('id, name');
+
+  if (usersError) {
+    alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + usersError.message);
+    return;
+  }
+
+  const userMap = {};
+  users.forEach(u => userMap[u.id] = u.name || 'ไม่พบชื่อ');
+
+  const tbody = document.querySelector('#adminLeaveTable tbody');
+  tbody.innerHTML = '';
+
+  for (const row of leaveData) {
+    const name = userMap[row.user_id] || 'ไม่พบชื่อ';
+    const start = `${formatDate(row.date_start)} ${row.time_start || ''}`;
+    const end = `${formatDate(row.date_end)} ${row.time_end || ''}`;
+    const mode = leaveModeLabel(row.leave_mode);
+    const statusHtml = `<span class="badge bg-${statusColor(row.status)}">${row.status}</span>`;
+
+    const manageButtons = row.status === 'pending' ? `
+      <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
+      <button class="btn btn-danger btn-sm" onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>
+    ` : '-';
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${name}</td>
+        <td>${row.leave_type}</td>
+        <td>${start}</td>
+        <td>${end}</td>
+        <td>${row.leave_days}</td>
+        <td>${mode}</td>
+        <td>${row.reason || '-'}</td>
+        <td>${statusHtml}</td>
+        <td>${manageButtons}</td>
+      </tr>
+    `;
+  }
+}
 
   async function updateStatus(id, status) {
     const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
