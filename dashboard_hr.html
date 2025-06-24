@@ -131,8 +131,9 @@ async function updateStatus(id, status) {
   if (error) {
     alert('อัปเดตสถานะไม่สำเร็จ: ' + error.message);
     console.error(error);
-  } else {
-    await loadLeaveRequests();
+  } else {    
+    await loadLeaveRequests();         // โหลดตารางใหม่
+    await loadLeaveTypeChart();       // โหลดกราฟใหม่
   }
 }
 
