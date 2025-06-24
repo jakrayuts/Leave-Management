@@ -92,7 +92,9 @@
     tbody.innerHTML = '';
 
     leaveData.forEach(row => {
-      const name = userMap[row.user_id] || 'ไม่พบชื่อ';
+      const { data: users } = await supabase.from('users').select('id, name');
+      const userMap = {};
+      users?.forEach(u => userMap[u.id] = u.name);
       const start = `${formatDate(row.date_start)} ${row.time_start || ''}`;
       const end = `${formatDate(row.date_end)} ${row.time_end || ''}`;
       const mode = leaveModeLabel(row.leave_mode);
