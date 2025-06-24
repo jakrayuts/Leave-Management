@@ -185,7 +185,7 @@
   window.logout = async function () {
     const { error } = await supabase.auth.signOut();
     if (error) return alert('ออกจากระบบไม่สำเร็จ: ' + error.message);
-    location.href = 'index.html';
+    location.href = '/Leave-Management/index.html';
   };
 
   init();
