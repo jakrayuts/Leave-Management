@@ -85,7 +85,6 @@
         alert("ไม่สามารถดึงข้อมูลผู้ใช้: " + (profileError?.message || "ไม่พบข้อมูล"));
         return;
       }
-
       const role = profile.role?.toLowerCase();
 
       if (role === 'admin' || role === 'hr') {
