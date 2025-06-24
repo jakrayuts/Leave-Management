@@ -156,9 +156,7 @@
         <thead>
           <tr>
             <th>ชื่อ</th>
-            <th>อีเมล</th>
             <th>แผนก</th>
-            <th>สถานะ</th>
             <th>สิทธิ์ (Role)</th>
             <th>บันทึก</th>
           </tr>
@@ -282,35 +280,36 @@
     }
 
     async function loadUsersForRoles() {
-      const { data, error } = await supabase.from('users').select('id, name,department, role');
-      if (error) {
-        alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
-        return;
-      }
-      const tbody = document.querySelector('#rolesTable tbody');
-      tbody.innerHTML = '';
+  const { data, error } = await supabase.from('users').select('id, name, department, role'); // ลบ email ออก
+  if (error) {
+    alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
+    return;
+  }
+  const tbody = document.querySelector('#rolesTable tbody');
+  tbody.innerHTML = '';
 
-      data.forEach(user => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${user.name}</td>            
-            <td>${user.department || '-'}</td>
-            <td>${user.role || '-'}</td>
-            <td>
-              <select class="form-select form-select-sm" onchange="markRoleChange('${user.id}', this.value)">
-                <option value="">-- เลือกสิทธิ์ --</option>
-                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                <option value="hr" ${user.role === 'hr' ? 'selected' : ''}>HR</option>
-                <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
-                <option value="anon" ${user.role === 'anon' ? 'selected' : ''}>Anon</option>
-              </select>
-            </td>
-            <td>
-              <button class="btn btn-primary btn-sm" onclick="saveRoleChange('${user.id}')">บันทึก</button>
-            </td>
-          </tr>`;
-      });
-    }
+  data.forEach(user => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${user.name}</td>
+        <td>${user.department || '-'}</td>  <!-- ลบคอลัมน์อีเมลออก -->
+        <td>${user.role || '-'}</td>
+        <td>
+          <select class="form-select form-select-sm" onchange="markRoleChange('${user.id}', this.value)">
+            <option value="">-- เลือกสิทธิ์ --</option>
+            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+            <option value="hr" ${user.role === 'hr' ? 'selected' : ''}>HR</option>
+            <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+            <option value="anon" ${user.role === 'anon' ? 'selected' : ''}>Anon</option>
+          </select>
+        </td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="saveRoleChange('${user.id}')">บันทึก</button>
+        </td>
+      </tr>`;
+  });
+}
+
 
     const changedRoles = {};
 
