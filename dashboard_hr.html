@@ -381,12 +381,18 @@
     await supabase.auth.signOut();
     location.href = 'index.html';
   }
-  function showSection(section) {
-    ['dashboard', 'requests', 'roles'].forEach(id => {
-      document.getElementById(id + 'Section').style.display = id === section ? 'block' : 'none';
-    });
-    if (section === 'roles') loadUsers();
-  }
+  //function showSection(section) {
+    //['dashboard', 'requests', 'roles'].forEach(id => {
+      //document.getElementById(id + 'Section').style.display = id === section ? 'block' : 'none';
+    //});
+    //if (section === 'roles') loadUsers();
+  //}
+function showSection(section) {
+  ['dashboard', 'requests', 'roles', 'reports'].forEach(id => {
+    document.getElementById(id + 'Section').style.display = id === section ? 'block' : 'none';
+  });
+  if (section === 'roles') loadUsers();
+}
 
   async function loadUsers() {
     const { data: users } = await supabase.from('users').select('id, name, department, role');
