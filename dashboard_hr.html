@@ -400,22 +400,33 @@ async function loadLeaveDepartmentChart() {
 }
 
 async function loadUsers() {
-  const { data } = await supabase.from('users').select('id, email, name, role');
+  const { data, error } = await supabase.from('users').select('id, email, name, role');
+  if (error || !data) {
+    console.error('โหลดข้อมูลผู้ใช้ล้มเหลว:', error);
+    document.getElementById('roleManagerTable').innerHTML = '<p class="text-danger">โหลดข้อมูลไม่สำเร็จ</p>';
+    return;
+  }
+
   const div = document.getElementById('roleManagerTable');
-  div.innerHTML = `<table class="table"><thead><tr><th>ชื่อ</th><th>อีเมล</th><th>Role</th><th>แก้ไข</th></tr></thead><tbody>` +
-    data.map(u => `
-      <tr>
-        <td>${u.name}</td>
-        <td>${u.email}</td>
-        <td>
-          <select class="form-select form-select-sm" data-id="${u.id}">
-            <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
-            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
-            <option value="hr" ${u.role === 'hr' ? 'selected' : ''}>hr</option>
-          </select>
-        </td>
-        <td><button class="btn btn-sm btn-primary" onclick="updateRole('${u.id}')">บันทึก</button></td>
-      </tr>`).join('') + `</tbody></table>`;
+  div.innerHTML = `
+    <table class="table">
+      <thead><tr><th>ชื่อ</th><th>อีเมล</th><th>Role</th><th>แก้ไข</th></tr></thead>
+      <tbody>
+        ${data.map(u => `
+          <tr>
+            <td>${u.name}</td>
+            <td>${u.email}</td>
+            <td>
+              <select class="form-select form-select-sm" data-id="${u.id}">
+                <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
+                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+                <option value="hr" ${u.role === 'hr' ? 'selected' : ''}>hr</option>
+              </select>
+            </td>
+            <td><button class="btn btn-sm btn-primary" onclick="updateRole('${u.id}')">บันทึก</button></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
 }
 
 function formatDate(d) {
