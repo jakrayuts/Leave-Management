@@ -105,6 +105,7 @@
         <select class="form-select form-select-sm" onchange="changeRole('${userId}', this.value)">${options}</select>
       `;
     }
+// ดึง role ทั้งหมดจากตาราง roles
 async function getRoleOptions() {
   const { data, error } = await supabase.from('roles').select('role_name').order('id');
   if (error) {
@@ -114,14 +115,15 @@ async function getRoleOptions() {
   return data.map(r => r.role_name);
 }
 
-    async function loadUsers() {
+// โหลดผู้ใช้พร้อม dropdown ที่ดึง role แบบ dynamic
+async function loadUsers() {
   const { data: users, error } = await supabase
     .from('users')
     .select('id, name, department, role');
 
   if (error) return alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
 
-  const roleOptions = await getRoleOptions(); // ดึง role จากตาราง roles
+  const roleOptions = await getRoleOptions();
 
   const tableHtml = `
     <table class="table table-bordered table-sm" id="userRoleTable">
@@ -137,7 +139,7 @@ async function getRoleOptions() {
             <td>
               <select class="form-select form-select-sm" onchange="changeRole('${user.id}', this.value)">
                 ${roleOptions.map(role => `
-                  <option value="${role}" ${user.role === role ? 'selected' : ''}>${role}</option>
+                  <option value="${role}" ${role.toLowerCase() === user.role?.toLowerCase() ? 'selected' : ''}>${role}</option>
                 `).join('')}
               </select>
             </td>
@@ -151,11 +153,13 @@ async function getRoleOptions() {
 }
 
 
-    window.changeRole = async (id, newRole) => {
-      const { error } = await supabase.from('users').update({ role: newRole }).eq('id', id);
-      if (error) alert('เปลี่ยนสิทธิ์ไม่สำเร็จ: ' + error.message);
-      else loadUsers();
-    };
+
+  window.changeRole = async (id, newRole) => {
+  const { error } = await supabase.from('users').update({ role: newRole.toLowerCase() }).eq('id', id);
+  if (error) alert('เปลี่ยนสิทธิ์ไม่สำเร็จ: ' + error.message);
+  else loadUsers();
+};
+
 
     function showSection(section) {
       ['dashboard', 'requests', 'roles'].forEach(id => {
