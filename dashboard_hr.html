@@ -24,6 +24,7 @@
       <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('dashboard')">📊 Dashboard</a></li>
       <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('requests')">📄 คำขอลา</a></li>
       <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('roles')">🛡️ จัดการสิทธิ์</a></li>
+      <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('reports')">📈 รายงาน</a></li> 
       <li class="nav-item mt-3"><button onclick="logout()" class="btn btn-danger w-100">ออกจากระบบ</button></li>
     </ul>
   </div>
@@ -61,7 +62,60 @@
     </div>
   </div>
 </div>
+<!-- เพิ่ม Section รายงาน -->
+    <div id="reportsSection" style="display: none; padding: 1rem;">
+      <h2>📈 รายงานการลา</h2>
+      <!-- ฟอร์มกรองรายงาน -->
+      <form id="reportFilterForm" class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label for="reportType" class="form-label">ประเภทรายงาน</label>
+          <select id="reportType" class="form-select">
+            <option value="detailed">แบบละเอียด</option>
+            <option value="summary">แบบสรุป</option>
+          </select>
+        </div>
 
+        <div class="col-md-3">
+          <label for="departmentSelect" class="form-label">แผนก</label>
+          <select id="departmentSelect" class="form-select">
+            <option value="">ทุกแผนก</option>
+            <!-- เติมแผนกจากฐานข้อมูล -->
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label for="employeeSelect" class="form-label">พนักงาน</label>
+          <select id="employeeSelect" class="form-select">
+            <option value="">ทุกคน</option>
+            <!-- เติมพนักงานจากฐานข้อมูล -->
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label for="monthPicker" class="form-label">ช่วงเวลา (เดือน)</label>
+          <input type="month" id="monthPicker" class="form-control" />
+        </div>
+
+        <div class="col-md-3">
+          <label for="displayType" class="form-label">รูปแบบแสดงผล</label>
+          <select id="displayType" class="form-select">
+            <option value="table">ตาราง</option>
+            <option value="chart">กราฟ</option>
+          </select>
+        </div>
+
+        <div class="col-md-3 align-self-end">
+          <button type="button" id="btnGenerate" class="btn btn-primary">แสดงรายงาน</button>
+        </div>
+
+        <div class="col-md-6 align-self-end text-end">
+          <button type="button" id="btnExportPdf" class="btn btn-danger">Export PDF</button>
+          <button type="button" id="btnExportExcel" class="btn btn-success">Export Excel</button>
+        </div>
+      </form>
+
+      <!-- พื้นที่แสดงรายงาน -->
+      <div id="reportResult"></div>
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
   const supabase = createClient('https://bokajbbrctsuqeyvykgb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw');
