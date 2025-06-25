@@ -55,16 +55,20 @@
       </div>
 
       <div id="rolesSection" style="display: none;">
-        <h2>🛡️ จัดการสิทธิ์ผู้ใช้</h2>
-        <table class="table table-bordered table-sm" id="userRoleTable">
-          <thead class="table-light">
-            <tr><th>ชื่อ</th><th>แผนก</th><th>สิทธิ์ปัจจุบัน</th><th>เปลี่ยนสิทธิ์</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  <h2>🛡️ จัดการสิทธิ์ผู้ใช้</h2>
+  <table class="table table-bordered table-sm" id="userRoleTable">
+    <thead class="table-light">
+      <tr>
+        <th>ชื่อ</th>
+        <th>แผนก</th>
+        <th>สิทธิ์ปัจจุบัน</th>
+        <th>เปลี่ยนสิทธิ์</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
 
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -86,22 +90,34 @@
     }
 
     async function loadUsers() {
-      const { data: users, error } = await supabase.from('users').select('id, name, department, role');
-      if (error) return alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('id, name, department, role');
 
-      const tbody = document.querySelector('#userRoleTable tbody');
-      tbody.innerHTML = '';
-      users.forEach(user => {
-        const selectHtml = `
-          <select class="form-select form-select-sm" onchange="changeRole('${user.id}', this.value)">
-            <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
-            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-            <option value="hr" ${user.role === 'hr' ? 'selected' : ''}>HR</option>
-          </select>`;
-        tbody.innerHTML += `
-          <tr><td>${user.name}</td><td>${user.department || '-'}</td><td>${user.role || '-'}</td><td>${selectHtml}</td></tr>`;
-      });
-    }
+  if (error) return alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
+
+  const tbody = document.querySelector('#userRoleTable tbody');
+  tbody.innerHTML = '';
+
+  users.forEach(user => {
+    const selectHtml = `
+      <select class="form-select form-select-sm" onchange="changeRole('${user.id}', this.value)">
+        <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+        <option value="hr" ${user.role === 'hr' ? 'selected' : ''}>HR</option>
+      </select>
+    `;
+    tbody.innerHTML += `
+      <tr>
+        <td>${user.name}</td>
+        <td>${user.department || '-'}</td>
+        <td>${user.role || '-'}</td>
+        <td>${selectHtml}</td>
+      </tr>
+    `;
+  });
+}
+
 
     window.changeRole = async (id, newRole) => {
       const { error } = await supabase.from('users').update({ role: newRole }).eq('id', id);
