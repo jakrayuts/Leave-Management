@@ -79,7 +79,51 @@
       await loadLeaveTypeChart();
       await loadLeaveDepartmentChart();
     }
+async function loadUsers() {
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('id, name, department, email, role');
 
+  if (error) return alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
+
+  const tbody = document.querySelector('#userRoleTable tbody');
+  tbody.innerHTML = '';
+
+  users.forEach(user => {
+    const selectHtml = `
+      <select class="form-select form-select-sm" onchange="changeRole('${user.id}', this.value)">
+        <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+        <option value="hr" ${user.role === 'hr' ? 'selected' : ''}>HR</option>
+      </select>
+    `;
+    tbody.innerHTML += `
+      <tr>
+        <td>${user.name}</td>
+        <td>${user.department || '-'}</td>
+        <td>${user.email || '-'}</td>
+        <td>${user.role || '-'}</td>
+        <td>${selectHtml}</td>
+      </tr>
+    `;
+  });
+}
+
+window.changeRole = async (id, newRole) => {
+  const { error } = await supabase.from('users').update({ role: newRole }).eq('id', id);
+  if (error) alert('เปลี่ยนสิทธิ์ไม่สำเร็จ: ' + error.message);
+  else loadUsers();
+};
+
+function showSection(section) {
+  document.getElementById('dashboardSection')?.style.display = section === 'dashboard' ? 'block' : 'none';
+  document.getElementById('requestsSection')?.style.display = section === 'requests' ? 'block' : 'none';
+  document.getElementById('rolesSection')?.style.display = section === 'roles' ? 'block' : 'none';
+  document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+  event.target.classList.add('active');
+
+  if (section === 'roles') loadUsers();
+}
     async function loadLeaveRequests() {
       const { data: leaveData } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
       const { data: users } = await supabase.from('users').select('id, name, department');
