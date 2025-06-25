@@ -400,12 +400,29 @@ async function loadLeaveDepartmentChart() {
 }
 
 async function loadUsers() {
-  const { data, error } = await supabase.from('users').select('id, email, name, role');
-  if (error || !data) {
-    console.error('โหลดข้อมูลผู้ใช้ล้มเหลว:', error);
-    document.getElementById('roleManagerTable').innerHTML = '<p class="text-danger">โหลดข้อมูลไม่สำเร็จ</p>';
-    return;
+    const { data: users } = await supabase.from('users').select('id, name, department, role');
+    const roles = ['User', 'HR', 'Admin', 'Supervisor'];
+    const html = `<table class="table table-bordered table-sm">
+      <thead><tr><th>ชื่อ</th><th>แผนก</th><th>สิทธิ์ปัจจุบัน</th><th>เปลี่ยนสิทธิ์</th></tr></thead>
+      <tbody>
+        ${users.map(u => `
+          <tr>
+            <td>${u.name}</td><td>${u.department}</td><td>${u.role}</td>
+            <td><select class="form-select form-select-sm" onchange="changeRole('${u.id}', this.value)">
+              ${roles.map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${r}</option>`).join('')}
+            </select></td>
+          </tr>`).join('')}
+      </tbody></table>`;
+    document.getElementById('roleManagerTable').innerHTML = html;
   }
+
+  window.updateStatus = updateStatus;
+  window.logout = logout;
+  window.showSection = showSection;
+  window.changeRole = async (id, newRole) => {
+    await supabase.from('users').update({ role: newRole }).eq('id', id);
+    loadUsers();
+  };
 
   const div = document.getElementById('roleManagerTable');
   div.innerHTML = `
