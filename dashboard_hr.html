@@ -55,20 +55,21 @@
       </div>
 
       <div id="rolesSection" style="display: none;">
-  <h2>🛡️ จัดการสิทธิ์ผู้ใช้</h2>
-  <table class="table table-bordered table-sm" id="userRoleTable">
-    <thead class="table-light">
-      <tr>
-        <th>ชื่อ</th>
-        <th>แผนก</th>
-        <th>สิทธิ์ปัจจุบัน</th>
-        <th>เปลี่ยนสิทธิ์</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
+        <h2>🛡️ จัดการสิทธิ์ผู้ใช้</h2>
+        <table class="table" id="userRoleTable">
+          <thead>
+            <tr>
+              <th>ชื่อ</th>
+              <th>แผนก</th>
+              <th>สิทธิ์ปัจจุบัน</th>
+              <th>เปลี่ยนสิทธิ์</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -87,38 +88,43 @@
       await loadLeaveRequests();
       await loadLeaveTypeChart();
       await loadLeaveDepartmentChart();
-      await loadUsers();
+    }
+
+    async function generateRoleDropdown(userId, currentRole) {
+      const { data: roles, error } = await supabase.from('roles').select('role_name');
+      if (error) {
+        console.error('โหลด role ไม่สำเร็จ:', error.message);
+        return `<select disabled class="form-select form-select-sm"><option>โหลดไม่สำเร็จ</option></select>`;
+      }
+
+      const options = roles.map(role => `
+        <option value="${role.role_name}" ${role.role_name === currentRole ? 'selected' : ''}>${role.role_name}</option>
+      `).join('');
+
+      return `
+        <select class="form-select form-select-sm" onchange="changeRole('${userId}', this.value)">${options}</select>
+      `;
     }
 
     async function loadUsers() {
-  const { data: users, error } = await supabase
-    .from('users')
-    .select('id, name, department, role');
+      const { data: users, error } = await supabase.from('users').select('id, name, department, role');
+      if (error) return alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
 
-  if (error) return alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
+      const tbody = document.querySelector('#userRoleTable tbody');
+      tbody.innerHTML = '';
 
-  const tbody = document.querySelector('#userRoleTable tbody');
-  tbody.innerHTML = '';
-
-  users.forEach(user => {
-    const selectHtml = `
-      <select class="form-select form-select-sm" onchange="changeRole('${user.id}', this.value)">
-        <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
-        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-        <option value="hr" ${user.role === 'hr' ? 'selected' : ''}>HR</option>
-      </select>
-    `;
-    tbody.innerHTML += `
-      <tr>
-        <td>${user.name}</td>
-        <td>${user.department || '-'}</td>
-        <td>${user.role || '-'}</td>
-        <td>${selectHtml}</td>
-      </tr>
-    `;
-  });
-}
-
+      for (const user of users) {
+        const selectHtml = await generateRoleDropdown(user.id, user.role);
+        tbody.innerHTML += `
+          <tr>
+            <td>${user.name}</td>
+            <td>${user.department || '-'}</td>
+            <td>${user.role || '-'}</td>
+            <td>${selectHtml}</td>
+          </tr>
+        `;
+      }
+    }
 
     window.changeRole = async (id, newRole) => {
       const { error } = await supabase.from('users').update({ role: newRole }).eq('id', id);
@@ -130,6 +136,7 @@
       ['dashboard', 'requests', 'roles'].forEach(id => {
         document.getElementById(id + 'Section').style.display = id === section ? 'block' : 'none';
       });
+      if (section === 'roles') loadUsers();
     }
 
     async function loadLeaveRequests() {
@@ -182,6 +189,7 @@
       const { data: users } = await supabase.from('users').select('id, department');
       const map = {}; users.forEach(u => map[u.id] = u.department);
       const chartData = {}, months = new Set(), depts = new Set();
+
       leaveData.forEach(row => {
         const dept = map[row.user_id] || 'อื่น ๆ';
         const month = new Date(row.date_start).toLocaleString('th-TH', { month: 'short' });
@@ -189,6 +197,7 @@
         chartData[key] = (chartData[key] || 0) + parseFloat(row.leave_days);
         months.add(month); depts.add(dept);
       });
+
       const labels = [...months];
       const datasets = [...depts].map(d => ({ label: d, data: labels.map(m => chartData[`${d}-${m}`] || 0), backgroundColor: randomColor() }));
       if (chartDept) chartDept.destroy();
