@@ -114,7 +114,13 @@
       const role = profile.role?.toLowerCase();
       if (role === 'admin' || role === 'hr') {
         location.href = '/Leave-Management/dashboard_hr.html';
-      } else {
+      } 
+      else if(role === 'supervisor')
+      {
+        location.href = '/Leave-Management/dashboard_sup.html';
+      }
+      else 
+      {
         location.href = '/Leave-Management/dashboard_user.html';
       }
     });
