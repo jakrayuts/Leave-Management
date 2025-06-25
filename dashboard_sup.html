@@ -55,7 +55,10 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    const supabase = createClient('https://bokajbbrctsuqeyvykgb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw');
+    const supabase = createClient(
+      'https://bokajbbrctsuqeyvykgb.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
+    );
 
     let currentUser, currentDepartment;
 
@@ -63,21 +66,34 @@
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return location.href = 'index.html';
 
-      const { data: userInfo } = await supabase.from('users').select('role, department').eq('id', user.id).maybeSingle();
-      if (!userInfo || userInfo.role !== 'Supervisor') return location.href = 'index.html';
+      const { data: userInfo } = await supabase
+        .from('users')
+        .select('role, department')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!userInfo || userInfo.role?.toLowerCase() !== 'supervisor') {
+        console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
+        return location.href = 'index.html';
+      }
 
       currentUser = user;
       currentDepartment = userInfo.department;
+      console.log('เข้าสู่ระบบ Supervisor:', currentDepartment);
 
-      loadPendingRequests();
-      loadHistory();
-      loadChart();
+      await loadPendingRequests();
+      await loadHistory();
+      await loadChart();
     }
 
     async function loadPendingRequests() {
-      const { data } = await supabase.from('leave_requests')
+      const { data, error } = await supabase
+        .from('leave_requests')
         .select('id, leave_type, date_start, date_end, leave_days, reason, user:user_id(name, department)')
         .eq('status', 'pending');
+
+      if (error) return console.error('โหลด pending ล้มเหลว:', error);
+      if (!data) return;
 
       const filtered = data.filter(r => r.user?.department === currentDepartment);
       const tbody = document.querySelector('#pendingTable tbody');
@@ -101,9 +117,13 @@
     }
 
     async function loadHistory() {
-      const { data } = await supabase.from('leave_requests')
+      const { data, error } = await supabase
+        .from('leave_requests')
         .select('leave_type, date_start, status, reason, user:user_id(name, department)')
         .in('status', ['approved', 'rejected']);
+
+      if (error) return console.error('โหลดประวัติล้มเหลว:', error);
+      if (!data) return;
 
       const filtered = data.filter(r => r.user?.department === currentDepartment);
       const tbody = document.querySelector('#historyTable tbody');
@@ -122,13 +142,17 @@
     }
 
     async function loadChart() {
-      const { data } = await supabase.from('leave_requests')
+      const { data, error } = await supabase
+        .from('leave_requests')
         .select('leave_type, leave_days, date_start, user:user_id(department)')
         .eq('status', 'approved');
 
-      const filtered = data.filter(r => r.user?.department === currentDepartment);
+      if (error) return console.error('โหลดกราฟล้มเหลว:', error);
+      if (!data) return;
 
+      const filtered = data.filter(r => r.user?.department === currentDepartment);
       const summary = {};
+
       filtered.forEach(r => {
         summary[r.leave_type] = (summary[r.leave_type] || 0) + r.leave_days;
       });
@@ -136,7 +160,8 @@
       const labels = Object.keys(summary);
       const values = Object.values(summary);
 
-      new Chart(document.getElementById('chartDeptLeave'), {
+      const ctx = document.getElementById('chartDeptLeave').getContext('2d');
+      new Chart(ctx, {
         type: 'bar',
         data: {
           labels,
@@ -158,13 +183,17 @@
 
     window.handleDecision = async (id, status) => {
       await supabase.from('leave_requests').update({ status }).eq('id', id);
-      loadPendingRequests();
-      loadHistory();
-      loadChart();
-    }
+      await loadPendingRequests();
+      await loadHistory();
+      await loadChart();
+    };
 
     function formatDate(d) {
-      return new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+      return new Date(d).toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
     }
 
     init();
