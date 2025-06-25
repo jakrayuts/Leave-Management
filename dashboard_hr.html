@@ -54,9 +54,11 @@
         </table>
       </div>
 
-      <div id="rolesSection" style="display: none;">
-        <h2>🛡️ จัดการสิทธิ์ผู้ใช้</h2>
-        <table class="table" id="userRoleTable">
+     <div id="rolesSection" style="display: none;">
+  <h2>🛡️ จัดการสิทธิ์ผู้ใช้</h2>
+  <div id="roleManagerTable"></div> 
+</div>
+
           <thead>
             <tr>
               <th>ชื่อ</th>
@@ -115,13 +117,22 @@ async function getRoleOptions() {
   return data.map(r => r.role_name);
 }
 
-// โหลดผู้ใช้พร้อม dropdown ที่ดึง role แบบ dynamic
+// โหลด users และ render ตารางจัดการสิทธิ์
 async function loadUsers() {
-  const { data: users, error } = await supabase
+  const container = document.getElementById('roleManagerTable');
+  if (!container) {
+    console.error('ไม่พบ #roleManagerTable ใน DOM');
+    return;
+  }
+
+  const { data: users, error: userError } = await supabase
     .from('users')
     .select('id, name, department, role');
 
-  if (error) return alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
+  if (userError) {
+    alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + userError.message);
+    return;
+  }
 
   const roleOptions = await getRoleOptions();
 
@@ -139,7 +150,7 @@ async function loadUsers() {
             <td>
               <select class="form-select form-select-sm" onchange="changeRole('${user.id}', this.value)">
                 ${roleOptions.map(role => `
-                  <option value="${role}" ${role.toLowerCase() === user.role?.toLowerCase() ? 'selected' : ''}>${role}</option>
+                  <option value="${role}" ${user.role === role ? 'selected' : ''}>${role}</option>
                 `).join('')}
               </select>
             </td>
@@ -149,24 +160,32 @@ async function loadUsers() {
     </table>
   `;
 
-  document.getElementById('roleManagerTable').innerHTML = tableHtml;
+  container.innerHTML = tableHtml;
 }
 
 
 
-  window.changeRole = async (id, newRole) => {
-  const { error } = await supabase.from('users').update({ role: newRole.toLowerCase() }).eq('id', id);
-  if (error) alert('เปลี่ยนสิทธิ์ไม่สำเร็จ: ' + error.message);
-  else loadUsers();
+
+window.changeRole = async (id, newRole) => {
+  const { error } = await supabase.from('users').update({ role: newRole }).eq('id', id);
+  if (error) {
+    alert('เปลี่ยนสิทธิ์ไม่สำเร็จ: ' + error.message);
+  } else {
+    loadUsers(); // รีเฟรชตาราง
+  }
 };
 
 
-    function showSection(section) {
-      ['dashboard', 'requests', 'roles'].forEach(id => {
-        document.getElementById(id + 'Section').style.display = id === section ? 'block' : 'none';
-      });
-      if (section === 'roles') loadUsers();
-    }
+
+  function showSection(section) {
+  ['dashboard', 'requests', 'roles'].forEach(id => {
+    const el = document.getElementById(id + 'Section');
+    if (el) el.style.display = id === section ? 'block' : 'none';
+  });
+
+  if (section === 'roles') loadUsers();
+}
+
 
     async function loadLeaveRequests() {
       const { data: leaveData } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
