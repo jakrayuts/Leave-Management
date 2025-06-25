@@ -9,7 +9,7 @@
   <style>
     body { font-family: sans-serif; background-color: #f9f9f9; margin: 0; }
     .sidebar { width: 250px; background-color: #343a40; color: white; min-height: 100vh; padding: 1rem; }
-    .sidebar .nav-link { color: white; }
+    .sidebar .nav-link { color: white; cursor: pointer; }
     .sidebar .nav-link.active { background-color: #0d6efd; border-radius: 0.25rem; }
     .main { padding: 2rem; flex-grow: 1; }
     canvas { background: white; border-radius: 8px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -21,10 +21,10 @@
   <div class="sidebar">
     <h4 class="mb-4">เมนู</h4>
     <ul class="nav flex-column">
-      <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('dashboard')">📊 Dashboard</a></li>
-      <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('requests')">📄 คำขอลา</a></li>
-      <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('roles')">🛡️ จัดการสิทธิ์</a></li>
-      <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('reports')">📈 รายงาน</a></li>  <!-- เพิ่มเมนูรายงาน -->
+      <li class="nav-item"><a class="nav-link" onclick="showSection('dashboard')">📊 Dashboard</a></li>
+      <li class="nav-item"><a class="nav-link" onclick="showSection('requests')">📄 คำขอลา</a></li>
+      <li class="nav-item"><a class="nav-link" onclick="showSection('roles')">🛡️ จัดการสิทธิ์</a></li>
+      <li class="nav-item"><a class="nav-link" onclick="showSection('reports')">📈 รายงาน</a></li>  <!-- เพิ่มเมนูรายงาน -->
       <li class="nav-item mt-3"><button onclick="logout()" class="btn btn-danger w-100">ออกจากระบบ</button></li>
     </ul>
   </div>
@@ -122,11 +122,16 @@
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
   import jsPDF from 'https://cdn.jsdelivr.net/npm/jspdf/+esm';
-import XLSX from 'https://cdn.jsdelivr.net/npm/xlsx/+esm';
-  const supabase = createClient('https://bokajbbrctsuqeyvykgb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw');
+  import XLSX from 'https://cdn.jsdelivr.net/npm/xlsx/+esm';
+
+  const supabase = createClient(
+    'https://bokajbbrctsuqeyvykgb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
+  );
 
   let chartType = null;
   let chartDept = null;
+  let reportChart = null; // กราฟในหน้ารายงาน
 
   async function init() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -139,145 +144,176 @@ import XLSX from 'https://cdn.jsdelivr.net/npm/xlsx/+esm';
     await loadLeaveTypeChart();
     await loadLeaveDepartmentChart();
     await loadUsers();
-  }
-document.getElementById('btnGenerate').addEventListener('click', async () => {
-  const reportType = document.getElementById('reportType').value;
-  const department = document.getElementById('departmentSelect').value;
-  const employee = document.getElementById('employeeSelect').value;
-  const month = document.getElementById('monthPicker').value; // yyyy-mm
-  const displayType = document.getElementById('displayType').value;
-
-  // แปลงเดือนเป็นช่วงวันที่
-  let startDate, endDate;
-  if (month) {
-    startDate = new Date(month + '-01');
-    endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + 1);
-    endDate.setDate(endDate.getDate() - 1);
+    await loadDepartmentsAndEmployees(); // โหลดข้อมูลสำหรับฟิลเตอร์รายงาน
   }
 
-  // Query data จาก Supabase
-  let query = supabase.from('leave_requests').select(`
-    user:user_id(id, name, department),
-    leave_type, date_start, date_end, leave_days, leave_mode, reason, status
-  `).eq('status', 'approved');
+  // โหลดข้อมูลแผนกและพนักงาน ใส่ใน select filter รายงาน
+  async function loadDepartmentsAndEmployees() {
+    // โหลดแผนกไม่ซ้ำ
+    const { data: users, error: userError } = await supabase.from('users').select('id, name, department');
+    if (userError) return console.error('โหลดข้อมูลผู้ใช้ล้มเหลว:', userError);
 
-  if (department) query = query.eq('user.department', department);
-  if (employee) query = query.eq('user.id', employee);
-  if (startDate && endDate) query = query.gte('date_start', startDate.toISOString()).lte('date_end', endDate.toISOString());
+    // หาแผนกไม่ซ้ำ
+    const departments = [...new Set(users.map(u => u.department).filter(Boolean))].sort();
 
-  const { data, error } = await query;
-  if (error) return alert('โหลดข้อมูลล้มเหลว: ' + error.message);
-
-  if (displayType === 'table') {
-    renderTable(data, reportType);
-  } else {
-    renderChart(data, reportType);
-  }
-});
-
-function renderTable(data, reportType) {
-  const container = document.getElementById('reportResult');
-  if (data.length === 0) {
-    container.innerHTML = '<p>ไม่มีข้อมูล</p>';
-    return;
-  }
-  if (reportType === 'detailed') {
-    let html = `<table class="table table-striped"><thead><tr>
-      <th>ชื่อ</th><th>แผนก</th><th>ประเภทลา</th><th>วันที่เริ่ม</th><th>วันที่สิ้นสุด</th><th>จำนวนวัน</th><th>โหมดลา</th><th>เหตุผล</th>
-    </tr></thead><tbody>`;
-    data.forEach(r => {
-      html += `<tr>
-        <td>${r.user?.name || '-'}</td>
-        <td>${r.user?.department || '-'}</td>
-        <td>${r.leave_type}</td>
-        <td>${new Date(r.date_start).toLocaleDateString()}</td>
-        <td>${new Date(r.date_end).toLocaleDateString()}</td>
-        <td>${r.leave_days}</td>
-        <td>${r.leave_mode}</td>
-        <td>${r.reason || '-'}</td>
-      </tr>`;
+    const departmentSelect = document.getElementById('departmentSelect');
+    departmentSelect.innerHTML = `<option value="">ทุกแผนก</option>`;
+    departments.forEach(d => {
+      departmentSelect.innerHTML += `<option value="${d}">${d}</option>`;
     });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-  } else if (reportType === 'summary') {
-    // สรุปแบบรวม: รวมจำนวนวันลาแยกตามประเภทหรือแผนก
+
+    const employeeSelect = document.getElementById('employeeSelect');
+    employeeSelect.innerHTML = `<option value="">ทุกคน</option>`;
+    users.forEach(u => {
+      employeeSelect.innerHTML += `<option value="${u.id}">${u.name}</option>`;
+    });
+  }
+
+  document.getElementById('btnGenerate').addEventListener('click', async () => {
+    const reportType = document.getElementById('reportType').value;
+    const department = document.getElementById('departmentSelect').value;
+    const employee = document.getElementById('employeeSelect').value;
+    const month = document.getElementById('monthPicker').value; // yyyy-mm
+    const displayType = document.getElementById('displayType').value;
+
+    // แปลงเดือนเป็นช่วงวันที่
+    let startDate, endDate;
+    if (month) {
+      startDate = new Date(month + '-01');
+      endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      endDate.setDate(endDate.getDate() - 1);
+    }
+
+    // Query data จาก Supabase
+    let query = supabase.from('leave_requests').select(`
+      user:user_id(id, name, department),
+      leave_type, date_start, date_end, leave_days, leave_mode, reason, status
+    `).eq('status', 'approved');
+
+    if (department) query = query.eq('user.department', department);
+    if (employee) query = query.eq('user.id', employee);
+    if (startDate && endDate) query = query.gte('date_start', startDate.toISOString()).lte('date_end', endDate.toISOString());
+
+    const { data, error } = await query;
+    if (error) return alert('โหลดข้อมูลล้มเหลว: ' + error.message);
+
+    if (displayType === 'table') {
+      renderTable(data, reportType);
+    } else {
+      renderChart(data, reportType);
+    }
+  });
+
+  function renderTable(data, reportType) {
+    const container = document.getElementById('reportResult');
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p>ไม่มีข้อมูล</p>';
+      return;
+    }
+    if (reportType === 'detailed') {
+      let html = `<table class="table table-striped"><thead><tr>
+        <th>ชื่อ</th><th>แผนก</th><th>ประเภทลา</th><th>วันที่เริ่ม</th><th>วันที่สิ้นสุด</th><th>จำนวนวัน</th><th>โหมดลา</th><th>เหตุผล</th>
+      </tr></thead><tbody>`;
+      data.forEach(r => {
+        html += `<tr>
+          <td>${r.user?.name || '-'}</td>
+          <td>${r.user?.department || '-'}</td>
+          <td>${r.leave_type}</td>
+          <td>${new Date(r.date_start).toLocaleDateString()}</td>
+          <td>${new Date(r.date_end).toLocaleDateString()}</td>
+          <td>${r.leave_days}</td>
+          <td>${leaveModeLabel(r.leave_mode)}</td>
+          <td>${r.reason || '-'}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    } else if (reportType === 'summary') {
+      // สรุปแบบรวม: รวมจำนวนวันลาแยกตามประเภท
+      const summary = {};
+      data.forEach(r => {
+        const key = r.leave_type;
+        summary[key] = (summary[key] || 0) + r.leave_days;
+      });
+      let html = `<table class="table table-striped"><thead><tr><th>ประเภทลา</th><th>จำนวนวัน</th></tr></thead><tbody>`;
+      Object.entries(summary).forEach(([type, days]) => {
+        html += `<tr><td>${type}</td><td>${days}</td></tr>`;
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+    if(reportChart){
+      reportChart.destroy();
+      reportChart = null;
+    }
+  }
+
+  function renderChart(data, reportType) {
+    const container = document.getElementById('reportResult');
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p>ไม่มีข้อมูล</p>';
+      return;
+    }
+    container.innerHTML = `<canvas id="reportChart"></canvas>`;
+    const ctx = document.getElementById('reportChart').getContext('2d');
+
     const summary = {};
     data.forEach(r => {
       const key = r.leave_type;
       summary[key] = (summary[key] || 0) + r.leave_days;
     });
-    let html = `<table class="table table-striped"><thead><tr><th>ประเภทลา</th><th>จำนวนวัน</th></tr></thead><tbody>`;
-    Object.entries(summary).forEach(([type, days]) => {
-      html += `<tr><td>${type}</td><td>${days}</td></tr>`;
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-  }
-}
 
-function renderChart(data, reportType) {
-  // ตัวอย่างแสดงกราฟรวมจำนวนวันลาตามประเภท
-  const container = document.getElementById('reportResult');
-  container.innerHTML = `<canvas id="reportChart"></canvas>`;
-  const ctx = document.getElementById('reportChart').getContext('2d');
+    const labels = Object.keys(summary);
+    const values = Object.values(summary);
 
-  const summary = {};
-  data.forEach(r => {
-    const key = r.leave_type;
-    summary[key] = (summary[key] || 0) + r.leave_days;
-  });
-
-  const labels = Object.keys(summary);
-  const values = Object.values(summary);
-
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'จำนวนวันลา',
-        data: values,
-        backgroundColor: labels.map(() => randomColor())
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        title: { display: true, text: 'สรุปจำนวนวันลา ตามประเภทลา' }
-      }
+    if(reportChart){
+      reportChart.destroy();
     }
+    reportChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'จำนวนวันลา',
+          data: values,
+          backgroundColor: labels.map(() => randomColor())
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: 'สรุปจำนวนวันลา ตามประเภทลา' }
+        }
+      }
+    });
+  }
+
+  // Export PDF (jsPDF)
+  document.getElementById('btnExportPdf').addEventListener('click', () => {
+    const container = document.getElementById('reportResult');
+    if (!container.innerText.trim()) return alert('ยังไม่มีรายงานให้ส่งออก');
+
+    const doc = new jsPDF();
+    doc.text('รายงานการลา', 10, 10);
+    doc.text(container.innerText, 10, 20);
+    doc.save('report_leave.pdf');
   });
-}
 
-function randomColor() {
-  return 'hsl(' + Math.floor(Math.random() * 360) + ', 70%, 60%)';
-}
+  // Export Excel (SheetJS)
+  document.getElementById('btnExportExcel').addEventListener('click', () => {
+    const container = document.getElementById('reportResult');
+    if (!container.innerText.trim()) return alert('ยังไม่มีรายงานให้ส่งออก');
 
-// Export PDF (jsPDF)
-document.getElementById('btnExportPdf').addEventListener('click', () => {
-  const container = document.getElementById('reportResult');
-  if (!container.innerText.trim()) return alert('ยังไม่มีรายงานให้ส่งออก');
+    /* สร้าง workbook จากตาราง */
+    const table = container.querySelector('table');
+    if (!table) return alert('ไม่มีตารางให้ส่งออก');
 
-  const doc = new jsPDF();
-  doc.text('รายงานการลา', 10, 10);
-  doc.text(container.innerText, 10, 20);
-  doc.save('report_leave.pdf');
-});
+    const workbook = XLSX.utils.table_to_book(table, { sheet: "Report" });
+    XLSX.writeFile(workbook, 'report_leave.xlsx');
+  });
 
-// Export Excel (SheetJS)
-document.getElementById('btnExportExcel').addEventListener('click', () => {
-  const container = document.getElementById('reportResult');
-  if (!container.innerText.trim()) return alert('ยังไม่มีรายงานให้ส่งออก');
-
-  /* สร้าง workbook จากตาราง */
-  const table = container.querySelector('table');
-  if (!table) return alert('ไม่มีตารางให้ส่งออก');
-
-  const workbook = XLSX.utils.table_to_book(table, { sheet: "Report" });
-  XLSX.writeFile(workbook, 'report_leave.xlsx');
-});
   async function loadLeaveRequests() {
     const { data: leaveData } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
     const { data: users } = await supabase.from('users').select('id, name, department');
@@ -320,77 +356,81 @@ document.getElementById('btnExportExcel').addEventListener('click', () => {
   async function loadLeaveDepartmentChart() {
     const { data: leaveData } = await supabase.from('leave_requests').select('user_id, date_start, leave_days').eq('status', 'approved');
     const { data: users } = await supabase.from('users').select('id, department');
-    const map = {}; users.forEach(u => map[u.id] = u.department);
-    const chartData = {}, months = new Set(), depts = new Set();
-    leaveData.forEach(row => {
-      const m = new Date(row.date_start).toLocaleString('th-TH', { month: 'short' });
-      const dept = map[row.user_id] || 'อื่น ๆ';
-      const key = `${dept}-${m}`;
-      chartData[key] = (chartData[key] || 0) + parseFloat(row.leave_days);
-      months.add(m); depts.add(dept);
-    });
-    const labels = [...months];
-    const datasets = [...depts].map(d => ({ label: d, data: labels.map(m => chartData[`${d}-${m}`] || 0), backgroundColor: randomColor() }));
-    if (chartDept) chartDept.destroy();
-    chartDept = new Chart(document.getElementById('leaveDepartmentChart'), { type: 'bar', data: { labels, datasets } });
-  }
+    const map = {}; users.for
+Each(u => map[u.id] = u.department);
+const chartData = {}, months = new Set(), depts = new Set();
+leaveData.forEach(row => {
+const m = new Date(row.date_start).toLocaleString('th-TH', { month: 'short' });
+const dept = map[row.user_id] || 'อื่น ๆ';
+const key = ${dept}-${m};
+chartData[key] = (chartData[key] || 0) + parseFloat(row.leave_days);
+months.add(m); depts.add(dept);
+});
+const labels = [...months];
+const datasets = [...depts].map(d => ({ label: d, data: labels.map(m => chartData[${d}-${m}] || 0), backgroundColor: randomColor() }));
+if (chartDept) chartDept.destroy();
+chartDept = new Chart(document.getElementById('leaveDepartmentChart'), { type: 'bar', data: { labels, datasets } });
+}
 
-  async function updateStatus(id, status) {
-    await supabase.from('leave_requests').update({ status }).eq('id', id);
-    await loadLeaveRequests();
-    await loadLeaveTypeChart();
-    await loadLeaveDepartmentChart();
-  }
+async function updateStatus(id, status) {
+if (!confirm(ยืนยันการ ${status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} คำขอนี้?)) return;
+await supabase.from('leave_requests').update({ status }).eq('id', id);
+await loadLeaveRequests();
+}
 
-  function formatDate(d) {
-    return new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
-  }
-  function leaveModeLabel(m) {
-    return { full: 'เต็มวัน', half_morning: 'ครึ่งวันเช้า', half_afternoon: 'ครึ่งวันบ่าย', hourly: 'รายชั่วโมง' }[m] || '-';
-  }
-  function statusColor(s) {
-    return { approved: 'success', rejected: 'danger', pending: 'secondary' }[s] || 'light';
-  }
-  function randomColor() {
-    return 'hsl(' + Math.floor(Math.random() * 360) + ', 70%, 70%)';
-  }
-  async function logout() {
-    await supabase.auth.signOut();
-    location.href = 'index.html';
-  }
-  function showSection(section) {
-    ['dashboard', 'requests', 'roles'].forEach(id => {
-      document.getElementById(id + 'Section').style.display = id === section ? 'block' : 'none';
-    });
-    if (section === 'roles') loadUsers();
-  }
+function formatDate(d) {
+const date = new Date(d);
+return date.toLocaleDateString('th-TH');
+}
 
-  async function loadUsers() {
-    const { data: users } = await supabase.from('users').select('id, name, department, role');
-    const roles = ['User', 'HR', 'Admin', 'Supervisor'];
-    const html = `<table class="table table-bordered table-sm">
-      <thead><tr><th>ชื่อ</th><th>แผนก</th><th>สิทธิ์ปัจจุบัน</th><th>เปลี่ยนสิทธิ์</th></tr></thead>
-      <tbody>
-        ${users.map(u => `
-          <tr>
-            <td>${u.name}</td><td>${u.department}</td><td>${u.role}</td>
-            <td><select class="form-select form-select-sm" onchange="changeRole('${u.id}', this.value)">
-              ${roles.map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${r}</option>`).join('')}
-            </select></td>
-          </tr>`).join('')}
-      </tbody></table>`;
-    document.getElementById('roleManagerTable').innerHTML = html;
-  }
+function statusColor(status) {
+return status === 'approved' ? 'success' : status === 'rejected' ? 'danger' : 'secondary';
+}
 
-  window.updateStatus = updateStatus;
-  window.logout = logout;
-  window.showSection = showSection;
-  window.changeRole = async (id, newRole) => {
-    await supabase.from('users').update({ role: newRole }).eq('id', id);
-    loadUsers();
-  };
+function leaveModeLabel(mode) {
+return mode === 'half_morning' ? 'ครึ่งวันเช้า' : mode === 'half_afternoon' ? 'ครึ่งวันบ่าย' : mode === 'hourly' ? 'รายชั่วโมง' : 'เต็มวัน';
+}
 
-  init();
+function randomColor() {
+return hsl(${Math.random() * 360}, 60%, 60%);
+}
+
+async function loadUsers() {
+const { data } = await supabase.from('users').select('id, email, name, role');
+const div = document.getElementById('roleManagerTable');
+div.innerHTML = <table class="table"><thead><tr><th>ชื่อ</th><th>อีเมล</th><th>Role</th><th>แก้ไข</th></tr></thead><tbody> ${data.map(u =>
+<tr>
+<td>${u.name}</td>
+<td>${u.email}</td>
+<td><select class="form-select form-select-sm" data-id="${u.id}">
+<option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
+<option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+<option value="hr" ${u.role === 'hr' ? 'selected' : ''}>hr</option>
+</select></td>
+<td><button class="btn btn-sm btn-primary" onclick="updateRole('${u.id}')">บันทึก</button></td>
+</tr>).join('')}</tbody></table>;
+}
+
+async function updateRole(userId) {
+const select = document.querySelector(select[data-id="${userId}"]);
+await supabase.from('users').update({ role: select.value }).eq('id', userId);
+alert('อัปเดต role แล้ว');
+}
+
+// ✅ แก้ไขฟังก์ชันนี้เพื่อรองรับ Section รายงาน
+function showSection(section) {
+['dashboard', 'requests', 'roles', 'reports'].forEach(id => {
+document.getElementById(id + 'Section').style.display = id === section ? 'block' : 'none';
+});
+if (section === 'roles') loadUsers();
+}
+
+async function logout() {
+await supabase.auth.signOut();
+location.href = 'index.html';
+}
+
+init();
 </script>
-</body>
+</body> 
 </html>
