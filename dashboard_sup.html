@@ -16,6 +16,11 @@
 </head>
 <body>
   <div class="container">
+        <!-- ปุ่มออกจากระบบ -->
+    <div class="d-flex justify-content-end mb-3">
+      <button id="btnLogout" class="btn btn-outline-danger btn-sm">🚪 ออกจากระบบ</button>
+    </div>
+    
     <h2>👨‍💼 แดชบอร์ดผู้ควบคุม (Supervisor)</h2>
 
     <!-- กราฟ -->
@@ -85,7 +90,12 @@
       await loadHistory();
       await loadChart();
     }
-
+// ผูกปุ่ม logout
+      document.getElementById('btnLogout').addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        location.href = 'index.html';
+      });
+    }
     async function loadPendingRequests() {
       const { data, error } = await supabase
         .from('leave_requests')
