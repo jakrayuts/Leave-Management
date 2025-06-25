@@ -9,7 +9,7 @@
   <style>
     body { font-family: sans-serif; background-color: #f9f9f9; margin: 0; }
     .sidebar { width: 250px; background-color: #343a40; color: white; min-height: 100vh; padding: 1rem; }
-    .sidebar .nav-link { color: white; cursor: pointer; }
+    .sidebar .nav-link { color: white; }
     .sidebar .nav-link.active { background-color: #0d6efd; border-radius: 0.25rem; }
     .main { padding: 2rem; flex-grow: 1; }
     canvas { background: white; border-radius: 8px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -21,10 +21,9 @@
   <div class="sidebar">
     <h4 class="mb-4">เมนู</h4>
     <ul class="nav flex-column">
-      <li class="nav-item"><a class="nav-link" onclick="showSection('dashboard')">📊 Dashboard</a></li>
-      <li class="nav-item"><a class="nav-link" onclick="showSection('requests')">📄 คำขอลา</a></li>
-      <li class="nav-item"><a class="nav-link" onclick="showSection('roles')">🛡️ จัดการสิทธิ์</a></li>
-      <li class="nav-item"><a class="nav-link" onclick="showSection('reports')">📈 รายงาน</a></li>  <!-- เพิ่มเมนูรายงาน -->
+      <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('dashboard')">📊 Dashboard</a></li>
+      <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('requests')">📄 คำขอลา</a></li>
+      <li class="nav-item"><a href="#" class="nav-link" onclick="showSection('roles')">🛡️ จัดการสิทธิ์</a></li>
       <li class="nav-item mt-3"><button onclick="logout()" class="btn btn-danger w-100">ออกจากระบบ</button></li>
     </ul>
   </div>
@@ -60,346 +59,116 @@
       <h2>🛡️ จัดการสิทธิ์ผู้ใช้</h2>
       <div id="roleManagerTable"></div>
     </div>
-
-    <!-- เพิ่ม Section รายงาน -->
-    <div id="reportsSection" style="display: none; padding: 1rem;">
-      <h2>📈 รายงานการลา</h2>
-      <!-- ฟอร์มกรองรายงาน -->
-      <form id="reportFilterForm" class="row g-3 mb-3">
-        <div class="col-md-3">
-          <label for="reportType" class="form-label">ประเภทรายงาน</label>
-          <select id="reportType" class="form-select">
-            <option value="detailed">แบบละเอียด</option>
-            <option value="summary">แบบสรุป</option>
-          </select>
-        </div>
-
-        <div class="col-md-3">
-          <label for="departmentSelect" class="form-label">แผนก</label>
-          <select id="departmentSelect" class="form-select">
-            <option value="">ทุกแผนก</option>
-            <!-- เติมแผนกจากฐานข้อมูล -->
-          </select>
-        </div>
-
-        <div class="col-md-3">
-          <label for="employeeSelect" class="form-label">พนักงาน</label>
-          <select id="employeeSelect" class="form-select">
-            <option value="">ทุกคน</option>
-            <!-- เติมพนักงานจากฐานข้อมูล -->
-          </select>
-        </div>
-
-        <div class="col-md-3">
-          <label for="monthPicker" class="form-label">ช่วงเวลา (เดือน)</label>
-          <input type="month" id="monthPicker" class="form-control" />
-        </div>
-
-        <div class="col-md-3">
-          <label for="displayType" class="form-label">รูปแบบแสดงผล</label>
-          <select id="displayType" class="form-select">
-            <option value="table">ตาราง</option>
-            <option value="chart">กราฟ</option>
-          </select>
-        </div>
-
-        <div class="col-md-3 align-self-end">
-          <button type="button" id="btnGenerate" class="btn btn-primary">แสดงรายงาน</button>
-        </div>
-
-        <div class="col-md-6 align-self-end text-end">
-          <button type="button" id="btnExportPdf" class="btn btn-danger">Export PDF</button>
-          <button type="button" id="btnExportExcel" class="btn btn-success">Export Excel</button>
-        </div>
-      </form>
-
-      <!-- พื้นที่แสดงรายงาน -->
-      <div id="reportResult"></div>
-    </div>
   </div>
 </div>
 
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import jsPDF from 'https://cdn.jsdelivr.net/npm/jspdf/+esm';
-import XLSX from 'https://cdn.jsdelivr.net/npm/xlsx/+esm';
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+  const supabase = createClient('https://bokajbbrctsuqeyvykgb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw');
 
-const supabase = createClient(
-  'https://bokajbbrctsuqeyvykgb.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
-);
+  let chartType = null;
+  let chartDept = null;
 
-let chartType = null;
-let chartDept = null;
-let reportChart = null;
+  async function init() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return location.href = 'index.html';
 
-// ✅ ฟังก์ชันเรียกจาก HTML ต้องแนบ window
-window.showSection = function(section) {
-  ['dashboard', 'requests', 'roles', 'reports'].forEach(id => {
-    document.getElementById(id + 'Section').style.display = id === section ? 'block' : 'none';
-  });
-  if (section === 'roles') loadUsers();
-};
+    const { data: userInfo } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
+    if (!userInfo || !['admin', 'hr'].includes(userInfo.role?.toLowerCase())) return location.href = 'index.html';
 
-window.logout = async function() {
-  await supabase.auth.signOut();
-  location.href = 'index.html';
-};
-
-window.updateStatus = async function(id, status) {
-  if (!confirm(`ยืนยันการ ${status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} คำขอนี้?`)) return;
-  await supabase.from('leave_requests').update({ status }).eq('id', id);
-  await loadLeaveRequests();
-};
-
-window.updateRole = async function(userId) {
-  const select = document.querySelector(`select[data-id="${userId}"]`);
-  await supabase.from('users').update({ role: select.value }).eq('id', userId);
-  alert('อัปเดต role แล้ว');
-};
-
-async function init() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return location.href = 'index.html';
-
-  const { data: userInfo } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
-  if (!userInfo || !['admin', 'hr'].includes(userInfo.role?.toLowerCase())) return location.href = 'index.html';
-
-  await loadLeaveRequests();
-  await loadLeaveTypeChart();
-  await loadLeaveDepartmentChart();
-  await loadUsers();
-  await loadDepartmentsAndEmployees();
-}
-
-async function loadDepartmentsAndEmployees() {
-  const { data: users, error } = await supabase.from('users').select('id, name, department');
-  if (error) return console.error('โหลดข้อมูลผู้ใช้ล้มเหลว:', error);
-
-  const departments = [...new Set(users.map(u => u.department).filter(Boolean))].sort();
-
-  const deptSelect = document.getElementById('departmentSelect');
-  deptSelect.innerHTML = `<option value="">ทุกแผนก</option>`;
-  departments.forEach(d => {
-    deptSelect.innerHTML += `<option value="${d}">${d}</option>`;
-  });
-
-  const empSelect = document.getElementById('employeeSelect');
-  empSelect.innerHTML = `<option value="">ทุกคน</option>`;
-  users.forEach(u => {
-    empSelect.innerHTML += `<option value="${u.id}">${u.name}</option>`;
-  });
-}
-
-document.getElementById('btnGenerate').addEventListener('click', async () => {
-  const reportType = document.getElementById('reportType').value;
-  const department = document.getElementById('departmentSelect').value;
-  const employee = document.getElementById('employeeSelect').value;
-  const month = document.getElementById('monthPicker').value;
-  const displayType = document.getElementById('displayType').value;
-
-  let startDate, endDate;
-  if (month) {
-    startDate = new Date(`${month}-01`);
-    endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + 1);
-    endDate.setDate(endDate.getDate() - 1);
+    await loadLeaveRequests();
+    await loadLeaveTypeChart();
+    await loadLeaveDepartmentChart();
   }
 
-  let query = supabase.from('leave_requests').select(`
-    user:user_id(id, name, department),
-    leave_type, date_start, date_end, leave_days, leave_mode, reason, status
-  `).eq('status', 'approved');
+  async function loadLeaveRequests() {
+    const { data: leaveData } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
+    const { data: users } = await supabase.from('users').select('id, name, department');
+    const userMap = {}; users.forEach(u => userMap[u.id] = u);
 
-  if (department) query = query.eq('user.department', department);
-  if (employee) query = query.eq('user.id', employee);
-  if (startDate && endDate) query = query.gte('date_start', startDate.toISOString()).lte('date_end', endDate.toISOString());
-
-  const { data, error } = await query;
-  if (error) return alert('โหลดข้อมูลล้มเหลว: ' + error.message);
-
-  if (displayType === 'table') renderTable(data, reportType);
-  else renderChart(data, reportType);
-});
-
-function renderTable(data, reportType) {
-  const container = document.getElementById('reportResult');
-  if (!data || data.length === 0) {
-    container.innerHTML = '<p>ไม่มีข้อมูล</p>';
-    return;
-  }
-
-  if (reportType === 'detailed') {
-    let html = `<table class="table table-striped"><thead><tr>
-      <th>ชื่อ</th><th>แผนก</th><th>ประเภทลา</th><th>วันที่เริ่ม</th><th>วันที่สิ้นสุด</th><th>จำนวนวัน</th><th>โหมดลา</th><th>เหตุผล</th>
-    </tr></thead><tbody>`;
-    data.forEach(r => {
-      html += `<tr>
-        <td>${r.user?.name || '-'}</td>
-        <td>${r.user?.department || '-'}</td>
-        <td>${r.leave_type}</td>
-        <td>${new Date(r.date_start).toLocaleDateString()}</td>
-        <td>${new Date(r.date_end).toLocaleDateString()}</td>
-        <td>${r.leave_days}</td>
-        <td>${leaveModeLabel(r.leave_mode)}</td>
-        <td>${r.reason || '-'}</td>
-      </tr>`;
+    const tbody = document.querySelector('#adminLeaveTable tbody');
+    tbody.innerHTML = '';
+    leaveData.forEach(row => {
+      const u = userMap[row.user_id] || { name: '-', department: '-' };
+      tbody.innerHTML += `
+        <tr>
+          <td>${u.name}</td><td>${u.department}</td><td>${row.leave_type}</td>
+          <td>${formatDate(row.date_start)} ${row.time_start || ''}</td>
+          <td>${formatDate(row.date_end)} ${row.time_end || ''}</td>
+          <td>${row.leave_days}</td><td>${leaveModeLabel(row.leave_mode)}</td>
+          <td>${row.reason || '-'}</td>
+          <td><span class="badge bg-${statusColor(row.status)}">${row.status}</span></td>
+          <td>${row.status === 'pending' ? `
+            <button class='btn btn-success btn-sm me-1' onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
+            <button class='btn btn-danger btn-sm' onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>` : '-'}</td>
+        </tr>`;
     });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-  } else {
-    const summary = {};
-    data.forEach(r => {
-      summary[r.leave_type] = (summary[r.leave_type] || 0) + r.leave_days;
+  }
+
+  async function loadLeaveTypeChart() {
+    const { data } = await supabase.from('leave_requests').select('leave_type, date_start, leave_days').eq('status', 'approved');
+    const chartData = {}, months = new Set(), types = new Set();
+    data.forEach(row => {
+      const m = new Date(row.date_start).toLocaleString('th-TH', { month: 'short' });
+      const key = `${row.leave_type}-${m}`;
+      chartData[key] = (chartData[key] || 0) + parseFloat(row.leave_days);
+      months.add(m); types.add(row.leave_type);
     });
-    let html = `<table class="table table-striped"><thead><tr><th>ประเภทลา</th><th>จำนวนวัน</th></tr></thead><tbody>`;
-    Object.entries(summary).forEach(([type, days]) => {
-      html += `<tr><td>${type}</td><td>${days}</td></tr>`;
+    const labels = [...months];
+    const datasets = [...types].map(t => ({ label: t, data: labels.map(m => chartData[`${t}-${m}`] || 0), backgroundColor: randomColor() }));
+    if (chartType) chartType.destroy();
+    chartType = new Chart(document.getElementById('leaveTypeChart'), { type: 'bar', data: { labels, datasets } });
+  }
+
+  async function loadLeaveDepartmentChart() {
+    const { data: leaveData } = await supabase.from('leave_requests').select('user_id, date_start, leave_days').eq('status', 'approved');
+    const { data: users } = await supabase.from('users').select('id, department');
+    const map = {}; users.forEach(u => map[u.id] = u.department);
+    const chartData = {}, months = new Set(), depts = new Set();
+    leaveData.forEach(row => {
+      const m = new Date(row.date_start).toLocaleString('th-TH', { month: 'short' });
+      const dept = map[row.user_id] || 'อื่น ๆ';
+      const key = `${dept}-${m}`;
+      chartData[key] = (chartData[key] || 0) + parseFloat(row.leave_days);
+      months.add(m); depts.add(dept);
     });
-    html += '</tbody></table>';
-    container.innerHTML = html;
+    const labels = [...months];
+    const datasets = [...depts].map(d => ({ label: d, data: labels.map(m => chartData[`${d}-${m}`] || 0), backgroundColor: randomColor() }));
+    if (chartDept) chartDept.destroy();
+    chartDept = new Chart(document.getElementById('leaveDepartmentChart'), { type: 'bar', data: { labels, datasets } });
   }
 
-  if (reportChart) {
-    reportChart.destroy();
-    reportChart = null;
+  async function updateStatus(id, status) {
+    await supabase.from('leave_requests').update({ status }).eq('id', id);
+    await loadLeaveRequests();
+    await loadLeaveTypeChart();
+    await loadLeaveDepartmentChart();
   }
-}
 
-function renderChart(data, reportType) {
-  const container = document.getElementById('reportResult');
-  if (!data || data.length === 0) {
-    container.innerHTML = '<p>ไม่มีข้อมูล</p>';
-    return;
+  function formatDate(d) {
+    return new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
   }
-  container.innerHTML = `<canvas id="reportChart"></canvas>`;
-  const ctx = document.getElementById('reportChart').getContext('2d');
+  function leaveModeLabel(m) {
+    return { full: 'เต็มวัน', half_morning: 'ครึ่งวันเช้า', half_afternoon: 'ครึ่งวันบ่าย', hourly: 'รายชั่วโมง' }[m] || '-';
+  }
+  function statusColor(s) {
+    return { approved: 'success', rejected: 'danger', pending: 'secondary' }[s] || 'light';
+  }
+  function randomColor() {
+    return 'hsl(' + Math.floor(Math.random() * 360) + ', 70%, 70%)';
+  }
+  async function logout() {
+    await supabase.auth.signOut();
+    location.href = 'index.html';
+  }
+  function showSection(section) {
+    ['dashboard', 'requests', 'roles'].forEach(id => {
+      document.getElementById(id + 'Section').style.display = id === section ? 'block' : 'none';
+    });
+    if (section === 'roles') loadUsers();
+  }
 
-  const summary = {};
-  data.forEach(r => {
-    summary[r.leave_type] = (summary[r.leave_type] || 0) + r.leave_days;
-  });
-
-  const labels = Object.keys(summary);
-  const values = Object.values(summary);
-
-  if (reportChart) reportChart.destroy();
-  reportChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'จำนวนวันลา',
-        data: values,
-        backgroundColor: labels.map(() => randomColor())
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        title: { display: true, text: 'สรุปจำนวนวันลา ตามประเภทลา' }
-      }
-    }
-  });
-}
-
-document.getElementById('btnExportPdf').addEventListener('click', () => {
-  const container = document.getElementById('reportResult');
-  if (!container.innerText.trim()) return alert('ยังไม่มีรายงานให้ส่งออก');
-
-  const doc = new jsPDF();
-  doc.text('รายงานการลา', 10, 10);
-  doc.text(container.innerText, 10, 20);
-  doc.save('report_leave.pdf');
-});
-
-document.getElementById('btnExportExcel').addEventListener('click', () => {
-  const container = document.getElementById('reportResult');
-  if (!container.innerText.trim()) return alert('ยังไม่มีรายงานให้ส่งออก');
-
-  const table = container.querySelector('table');
-  if (!table) return alert('ไม่มีตารางให้ส่งออก');
-
-  const workbook = XLSX.utils.table_to_book(table, { sheet: "Report" });
-  XLSX.writeFile(workbook, 'report_leave.xlsx');
-});
-
-async function loadLeaveRequests() {
-  const { data: leaveData } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
-  const { data: users } = await supabase.from('users').select('id, name, department');
-  const userMap = {}; users.forEach(u => userMap[u.id] = u);
-
-  const tbody = document.querySelector('#adminLeaveTable tbody');
-  tbody.innerHTML = '';
-  leaveData.forEach(row => {
-    const u = userMap[row.user_id] || { name: '-', department: '-' };
-    tbody.innerHTML += `
-      <tr>
-        <td>${u.name}</td><td>${u.department}</td><td>${row.leave_type}</td>
-        <td>${formatDate(row.date_start)} ${row.time_start || ''}</td>
-        <td>${formatDate(row.date_end)} ${row.time_end || ''}</td>
-        <td>${row.leave_days}</td><td>${leaveModeLabel(row.leave_mode)}</td>
-        <td>${row.reason || '-'}</td>
-        <td><span class="badge bg-${statusColor(row.status)}">${row.status}</span></td>
-        <td>${row.status === 'pending' ? `
-          <button class='btn btn-success btn-sm me-1' onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
-          <button class='btn btn-danger btn-sm' onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>` : '-'}</td>
-      </tr>`;
-  });
-}
-
-async function loadLeaveTypeChart() {
-  const { data } = await supabase.from('leave_requests').select('leave_type, date_start, leave_days').eq('status', 'approved');
-  const chartData = {}, months = new Set(), types = new Set();
-  data.forEach(row => {
-    const m = new Date(row.date_start).toLocaleString('th-TH', { month: 'short' });
-    const key = `${row.leave_type}-${m}`;
-    chartData[key] = (chartData[key] || 0) + parseFloat(row.leave_days);
-    months.add(m); types.add(row.leave_type);
-  });
-  const labels = [...months];
-  const datasets = [...types].map(t => ({
-    label: t,
-    data: labels.map(m => chartData[`${t}-${m}`] || 0),
-    backgroundColor: randomColor()
-  }));
-  if (chartType) chartType.destroy();
-  chartType = new Chart(document.getElementById('leaveTypeChart'), {
-    type: 'bar',
-    data: { labels, datasets }
-  });
-}
-
-async function loadLeaveDepartmentChart() {
-  const { data: leaveData } = await supabase.from('leave_requests').select('user_id, date_start, leave_days').eq('status', 'approved');
-  const { data: users } = await supabase.from('users').select('id, department');
-  const map = {}; users.forEach(u => map[u.id] = u.department || 'อื่น ๆ');
-
-  const chartData = {}, months = new Set(), depts = new Set();
-  leaveData.forEach(row => {
-    const m = new Date(row.date_start).toLocaleString('th-TH', { month: 'short' });
-    const dept = map[row.user_id] || 'อื่น ๆ';
-    const key = `${dept}-${m}`;
-    chartData[key] = (chartData[key] || 0) + parseFloat(row.leave_days);
-    months.add(m); depts.add(dept);
-  });
-
-  const labels = [...months];
-  const datasets = [...depts].map(d => ({
-    label: d,
-    data: labels.map(m => chartData[`${d}-${m}`] || 0),
-    backgroundColor: randomColor()
-  }));
-
-  if (chartDept) chartDept.destroy();
-  chartDept = new Chart(document.getElementById('leaveDepartmentChart'), {
-    type: 'bar',
-    data: { labels, datasets }
-  });
-}
-
-async function loadUsers() {
+  async function loadUsers() {
     const { data: users } = await supabase.from('users').select('id, name, department, role');
     const roles = ['User', 'HR', 'Admin', 'Supervisor'];
     const html = `<table class="table table-bordered table-sm">
@@ -424,48 +193,7 @@ async function loadUsers() {
     loadUsers();
   };
 
-  const div = document.getElementById('roleManagerTable');
-  div.innerHTML = `
-    <table class="table">
-      <thead><tr><th>ชื่อ</th><th>อีเมล</th><th>Role</th><th>แก้ไข</th></tr></thead>
-      <tbody>
-        ${data.map(u => `
-          <tr>
-            <td>${u.name}</td>
-            <td>${u.email}</td>
-            <td>
-              <select class="form-select form-select-sm" data-id="${u.id}">
-                <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
-                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
-                <option value="hr" ${u.role === 'hr' ? 'selected' : ''}>hr</option>
-              </select>
-            </td>
-            <td><button class="btn btn-sm btn-primary" onclick="updateRole('${u.id}')">บันทึก</button></td>
-          </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-function formatDate(d) {
-  return new Date(d).toLocaleDateString('th-TH');
-}
-
-function statusColor(status) {
-  return status === 'approved' ? 'success' : status === 'rejected' ? 'danger' : 'secondary';
-}
-
-function leaveModeLabel(mode) {
-  return mode === 'half_morning' ? 'ครึ่งวันเช้า' :
-         mode === 'half_afternoon' ? 'ครึ่งวันบ่าย' :
-         mode === 'hourly' ? 'รายชั่วโมง' : 'เต็มวัน';
-}
-
-function randomColor() {
-  return `hsl(${Math.random() * 360}, 60%, 60%)`;
-}
-
-await init();
+  init();
 </script>
-
-</body> 
+</body>
 </html>
