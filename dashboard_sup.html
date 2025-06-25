@@ -5,26 +5,56 @@
   <title>แดชบอร์ด Supervisor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f4f6f9;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .card {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border-radius: 1rem;
+    }
+    th {
+      background-color: #0d6efd;
+      color: white;
+    }
+    .btn-sm {
+      font-size: 0.8rem;
+      padding: 0.3rem 0.6rem;
+    }
+  </style>
 </head>
 <body>
-  <div class="container py-4">
-    <h2 class="mb-4">📋 คำขอลาจากแผนกของคุณ</h2>
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>ชื่อ</th>
-          <th>ประเภทลา</th>
-          <th>วันที่เริ่ม</th>
-          <th>วันที่สิ้นสุด</th>
-          <th>จำนวนวัน</th>
-          <th>โหมดลา</th>
-          <th>เหตุผล</th>
-          <th>การจัดการ</th>
-        </tr>
-      </thead>
-      <tbody id="leaveTableBody"></tbody>
-    </table>
-    <button onclick="logout()" class="btn btn-secondary mt-3">ออกจากระบบ</button>
+  <div class="container my-5">
+    <div class="text-center mb-4">
+      <h2 class="fw-bold text-primary">📋 อนุมัติการลาของแผนก</h2>
+      <p class="text-muted">แดชบอร์ดสำหรับ Supervisor</p>
+    </div>
+
+    <div class="card p-4">
+      <h5 class="mb-3">รายการคำขอลาที่รอดำเนินการ</h5>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>ชื่อ</th>
+              <th>ประเภทลา</th>
+              <th>เริ่ม</th>
+              <th>สิ้นสุด</th>
+              <th>จำนวนวัน</th>
+              <th>โหมด</th>
+              <th>เหตุผล</th>
+              <th>การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="leaveTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="text-end mt-4">
+      <button onclick="logout()" class="btn btn-outline-secondary">ออกจากระบบ</button>
+    </div>
   </div>
 
   <script type="module">
@@ -42,11 +72,11 @@
       const { data: userInfo } = await supabase.from('users').select('role, department').eq('id', user.id).maybeSingle();
       if (!userInfo || userInfo.role !== 'Supervisor') return location.href = 'index.html';
 
-      const myDepartment = userInfo.department;
-      loadDepartmentLeaveRequests(myDepartment);
+      const myDept = userInfo.department;
+      loadLeaveRequests(myDept);
     }
 
-    async function loadDepartmentLeaveRequests(department) {
+    async function loadLeaveRequests(dept) {
       const { data: leaveData } = await supabase
         .from('leave_requests')
         .select('id, user_id, leave_type, date_start, date_end, leave_days, leave_mode, reason, status')
@@ -56,45 +86,49 @@
       const userMap = {};
       users.forEach(u => userMap[u.id] = u);
 
-      const filtered = leaveData.filter(r => userMap[r.user_id]?.department === department);
-
       const tbody = document.getElementById('leaveTableBody');
       tbody.innerHTML = '';
-      filtered.forEach(row => {
-        const u = userMap[row.user_id] || { name: '-', department: '-' };
-        tbody.innerHTML += `
-          <tr>
-            <td>${u.name}</td>
-            <td>${row.leave_type}</td>
-            <td>${formatDate(row.date_start)}</td>
-            <td>${formatDate(row.date_end)}</td>
-            <td>${row.leave_days}</td>
-            <td>${leaveModeLabel(row.leave_mode)}</td>
-            <td>${row.reason || '-'}</td>
-            <td>
-              <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${row.id}', 'approved')">อนุมัติ</button>
-              <button class="btn btn-danger btn-sm" onclick="updateStatus('${row.id}', 'rejected')">ปฏิเสธ</button>
-            </td>
-          </tr>`;
+
+      leaveData
+        .filter(r => userMap[r.user_id]?.department === dept)
+        .forEach(r => {
+          const u = userMap[r.user_id] || { name: '-', department: '-' };
+          tbody.innerHTML += `
+            <tr>
+              <td>${u.name}</td>
+              <td><span class="badge bg-primary">${r.leave_type}</span></td>
+              <td>${formatDate(r.date_start)}</td>
+              <td>${formatDate(r.date_end)}</td>
+              <td>${r.leave_days}</td>
+              <td>${leaveModeLabel(r.leave_mode)}</td>
+              <td>${r.reason || '-'}</td>
+              <td>
+                <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${r.id}', 'approved')">✔ อนุมัติ</button>
+                <button class="btn btn-danger btn-sm" onclick="updateStatus('${r.id}', 'rejected')">✘ ปฏิเสธ</button>
+              </td>
+            </tr>
+          `;
+        });
+    }
+
+    function formatDate(d) {
+      return new Date(d).toLocaleDateString('th-TH', {
+        year: 'numeric', month: 'short', day: 'numeric'
       });
     }
 
-    async function updateStatus(id, status) {
-      await supabase.from('leave_requests').update({ status }).eq('id', id);
-      init(); // reload
-    }
-
-    function formatDate(dateStr) {
-      return new Date(dateStr).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
-    }
-
-    function leaveModeLabel(mode) {
+    function leaveModeLabel(m) {
       return {
         full: 'เต็มวัน',
         half_morning: 'ครึ่งวันเช้า',
         half_afternoon: 'ครึ่งวันบ่าย',
         hourly: 'รายชั่วโมง'
-      }[mode] || '-';
+      }[m] || '-';
+    }
+
+    async function updateStatus(id, status) {
+      await supabase.from('leave_requests').update({ status }).eq('id', id);
+      init();
     }
 
     async function logout() {
