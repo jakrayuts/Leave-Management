@@ -105,26 +105,51 @@
         <select class="form-select form-select-sm" onchange="changeRole('${userId}', this.value)">${options}</select>
       `;
     }
+async function getRoleOptions() {
+  const { data, error } = await supabase.from('roles').select('role_name').order('id');
+  if (error) {
+    console.error('โหลด roles ล้มเหลว:', error.message);
+    return [];
+  }
+  return data.map(r => r.role_name);
+}
 
     async function loadUsers() {
-      const { data: users, error } = await supabase.from('users').select('id, name, department, role');
-      if (error) return alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('id, name, department, role');
 
-      const tbody = document.querySelector('#userRoleTable tbody');
-      tbody.innerHTML = '';
+  if (error) return alert('โหลดข้อมูลผู้ใช้ล้มเหลว: ' + error.message);
 
-      for (const user of users) {
-        const selectHtml = await generateRoleDropdown(user.id, user.role);
-        tbody.innerHTML += `
+  const roleOptions = await getRoleOptions(); // ดึง role จากตาราง roles
+
+  const tableHtml = `
+    <table class="table table-bordered table-sm" id="userRoleTable">
+      <thead class="table-light">
+        <tr><th>ชื่อ</th><th>แผนก</th><th>สิทธิ์ปัจจุบัน</th><th>เปลี่ยนสิทธิ์</th></tr>
+      </thead>
+      <tbody>
+        ${users.map(user => `
           <tr>
-            <td>${user.name}</td>
+            <td>${user.name || '-'}</td>
             <td>${user.department || '-'}</td>
             <td>${user.role || '-'}</td>
-            <td>${selectHtml}</td>
+            <td>
+              <select class="form-select form-select-sm" onchange="changeRole('${user.id}', this.value)">
+                ${roleOptions.map(role => `
+                  <option value="${role}" ${user.role === role ? 'selected' : ''}>${role}</option>
+                `).join('')}
+              </select>
+            </td>
           </tr>
-        `;
-      }
-    }
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  document.getElementById('roleManagerTable').innerHTML = tableHtml;
+}
+
 
     window.changeRole = async (id, newRole) => {
       const { error } = await supabase.from('users').update({ role: newRole }).eq('id', id);
