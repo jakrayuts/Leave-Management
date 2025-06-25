@@ -5,65 +5,59 @@
   <title>แดชบอร์ด Supervisor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {
-      background-color: #f4f6f9;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .card {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-      border-radius: 1rem;
-    }
-    th {
-      background-color: #0d6efd;
-      color: white;
-    }
-    .btn-sm {
-      font-size: 0.8rem;
-      padding: 0.3rem 0.6rem;
-    }
+    body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; margin: 0; }
+    .container { padding: 2rem; }
+    h2 { margin-bottom: 1.5rem; }
+    .card { box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 10px; }
+    .badge { font-size: 0.9rem; }
   </style>
 </head>
 <body>
-  <div class="container my-5">
-    <div class="text-center mb-4">
-      <h2 class="fw-bold text-primary">📋 อนุมัติการลาของแผนก</h2>
-      <p class="text-muted">แดชบอร์ดสำหรับ Supervisor</p>
+  <div class="container">
+    <h2>👨‍💼 แดชบอร์ดผู้ควบคุม (Supervisor)</h2>
+
+    <!-- กราฟ -->
+    <div class="card p-3 mb-4">
+      <h5>📊 สรุปการลาในแผนกของคุณ</h5>
+      <canvas id="chartDeptLeave" height="200"></canvas>
     </div>
 
-    <div class="card p-4">
-      <h5 class="mb-3">รายการคำขอลาที่รอดำเนินการ</h5>
+    <!-- คำขอลารออนุมัติ -->
+    <div class="card p-3 mb-4">
+      <h5>📄 คำขอลาที่รออนุมัติ</h5>
       <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead>
-            <tr>
-              <th>ชื่อ</th>
-              <th>ประเภทลา</th>
-              <th>เริ่ม</th>
-              <th>สิ้นสุด</th>
-              <th>จำนวนวัน</th>
-              <th>โหมด</th>
-              <th>เหตุผล</th>
-              <th>การจัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="leaveTableBody"></tbody>
+        <table class="table table-striped" id="pendingTable">
+          <thead><tr>
+            <th>ชื่อ</th><th>ประเภทลา</th><th>วันที่เริ่ม</th><th>วันที่สิ้นสุด</th><th>จำนวนวัน</th><th>เหตุผล</th><th>การจัดการ</th>
+          </tr></thead>
+          <tbody></tbody>
         </table>
       </div>
     </div>
 
-    <div class="text-end mt-4">
-      <button onclick="logout()" class="btn btn-outline-secondary">ออกจากระบบ</button>
+    <!-- ประวัติคำขอ -->
+    <div class="card p-3">
+      <h5>🕘 ประวัติการอนุมัติ/ปฏิเสธ</h5>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm" id="historyTable">
+          <thead><tr>
+            <th>ชื่อ</th><th>ประเภท</th><th>วันที่</th><th>สถานะ</th><th>เหตุผล</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
+  <!-- JS -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    const supabase = createClient(
-      'https://bokajbbrctsuqeyvykgb.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
-    );
+    const supabase = createClient('https://bokajbbrctsuqeyvykgb.supabase.co', 'YOUR_ANON_KEY');
+
+    let currentUser, currentDepartment;
 
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -72,72 +66,106 @@
       const { data: userInfo } = await supabase.from('users').select('role, department').eq('id', user.id).maybeSingle();
       if (!userInfo || userInfo.role !== 'Supervisor') return location.href = 'index.html';
 
-      const myDept = userInfo.department;
-      loadLeaveRequests(myDept);
+      currentUser = user;
+      currentDepartment = userInfo.department;
+
+      loadPendingRequests();
+      loadHistory();
+      loadChart();
     }
 
-    async function loadLeaveRequests(dept) {
-      const { data: leaveData } = await supabase
-        .from('leave_requests')
-        .select('id, user_id, leave_type, date_start, date_end, leave_days, leave_mode, reason, status')
+    async function loadPendingRequests() {
+      const { data } = await supabase.from('leave_requests')
+        .select('id, leave_type, date_start, date_end, leave_days, reason, user:user_id(name, department)')
         .eq('status', 'pending');
 
-      const { data: users } = await supabase.from('users').select('id, name, department');
-      const userMap = {};
-      users.forEach(u => userMap[u.id] = u);
-
-      const tbody = document.getElementById('leaveTableBody');
+      const filtered = data.filter(r => r.user?.department === currentDepartment);
+      const tbody = document.querySelector('#pendingTable tbody');
       tbody.innerHTML = '';
 
-      leaveData
-        .filter(r => userMap[r.user_id]?.department === dept)
-        .forEach(r => {
-          const u = userMap[r.user_id] || { name: '-', department: '-' };
-          tbody.innerHTML += `
-            <tr>
-              <td>${u.name}</td>
-              <td><span class="badge bg-primary">${r.leave_type}</span></td>
-              <td>${formatDate(r.date_start)}</td>
-              <td>${formatDate(r.date_end)}</td>
-              <td>${r.leave_days}</td>
-              <td>${leaveModeLabel(r.leave_mode)}</td>
-              <td>${r.reason || '-'}</td>
-              <td>
-                <button class="btn btn-success btn-sm me-1" onclick="updateStatus('${r.id}', 'approved')">✔ อนุมัติ</button>
-                <button class="btn btn-danger btn-sm" onclick="updateStatus('${r.id}', 'rejected')">✘ ปฏิเสธ</button>
-              </td>
-            </tr>
-          `;
-        });
-    }
-
-    function formatDate(d) {
-      return new Date(d).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'short', day: 'numeric'
+      filtered.forEach(r => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${r.user.name}</td>
+            <td>${r.leave_type}</td>
+            <td>${formatDate(r.date_start)}</td>
+            <td>${formatDate(r.date_end)}</td>
+            <td>${r.leave_days}</td>
+            <td>${r.reason || '-'}</td>
+            <td>
+              <button class="btn btn-sm btn-success me-1" onclick="handleDecision('${r.id}', 'approved')">✅ อนุมัติ</button>
+              <button class="btn btn-sm btn-danger" onclick="handleDecision('${r.id}', 'rejected')">❌ ปฏิเสธ</button>
+            </td>
+          </tr>`;
       });
     }
 
-    function leaveModeLabel(m) {
-      return {
-        full: 'เต็มวัน',
-        half_morning: 'ครึ่งวันเช้า',
-        half_afternoon: 'ครึ่งวันบ่าย',
-        hourly: 'รายชั่วโมง'
-      }[m] || '-';
+    async function loadHistory() {
+      const { data } = await supabase.from('leave_requests')
+        .select('leave_type, date_start, status, reason, user:user_id(name, department)')
+        .in('status', ['approved', 'rejected']);
+
+      const filtered = data.filter(r => r.user?.department === currentDepartment);
+      const tbody = document.querySelector('#historyTable tbody');
+      tbody.innerHTML = '';
+
+      filtered.forEach(r => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${r.user.name}</td>
+            <td>${r.leave_type}</td>
+            <td>${formatDate(r.date_start)}</td>
+            <td><span class="badge bg-${r.status === 'approved' ? 'success' : 'danger'}">${r.status}</span></td>
+            <td>${r.reason || '-'}</td>
+          </tr>`;
+      });
     }
 
-    async function updateStatus(id, status) {
+    async function loadChart() {
+      const { data } = await supabase.from('leave_requests')
+        .select('leave_type, leave_days, date_start, user:user_id(department)')
+        .eq('status', 'approved');
+
+      const filtered = data.filter(r => r.user?.department === currentDepartment);
+
+      const summary = {};
+      filtered.forEach(r => {
+        summary[r.leave_type] = (summary[r.leave_type] || 0) + r.leave_days;
+      });
+
+      const labels = Object.keys(summary);
+      const values = Object.values(summary);
+
+      new Chart(document.getElementById('chartDeptLeave'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'จำนวนวันลา',
+            data: values,
+            backgroundColor: labels.map(() => `hsl(${Math.random() * 360}, 70%, 70%)`)
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: 'จำนวนวันลาแยกตามประเภท' },
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    window.handleDecision = async (id, status) => {
       await supabase.from('leave_requests').update({ status }).eq('id', id);
-      init();
+      loadPendingRequests();
+      loadHistory();
+      loadChart();
     }
 
-    async function logout() {
-      await supabase.auth.signOut();
-      location.href = 'index.html';
+    function formatDate(d) {
+      return new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
     }
-
-    window.updateStatus = updateStatus;
-    window.logout = logout;
 
     init();
   </script>
