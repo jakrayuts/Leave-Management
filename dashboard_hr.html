@@ -125,6 +125,7 @@
 
   let chartType = null;
   let chartDept = null;
+  let reportChart = null; 
 
   async function init() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -136,7 +137,176 @@
     await loadLeaveRequests();
     await loadLeaveTypeChart();
     await loadLeaveDepartmentChart();
+    await loadUsers();
+    await loadDepartmentsAndEmployees(); // โหลดข้อมูลสำหรับฟิลเตอร์รายงาน
   }
+
+  / โหลดข้อมูลแผนกและพนักงาน ใส่ใน select filter รายงาน
+  async function loadDepartmentsAndEmployees() {
+    // โหลดแผนกไม่ซ้ำ
+    const { data: users, error: userError } = await supabase.from('users').select('id, name, department');
+    if (userError) return console.error('โหลดข้อมูลผู้ใช้ล้มเหลว:', userError);
+
+    // หาแผนกไม่ซ้ำ
+    const departments = [...new Set(users.map(u => u.department).filter(Boolean))].sort();
+
+    const departmentSelect = document.getElementById('departmentSelect');
+    departmentSelect.innerHTML = `<option value="">ทุกแผนก</option>`;
+    departments.forEach(d => {
+      departmentSelect.innerHTML += `<option value="${d}">${d}</option>`;
+    });
+
+    const employeeSelect = document.getElementById('employeeSelect');
+    employeeSelect.innerHTML = `<option value="">ทุกคน</option>`;
+    users.forEach(u => {
+      employeeSelect.innerHTML += `<option value="${u.id}">${u.name}</option>`;
+    });
+  }
+
+  document.getElementById('btnGenerate').addEventListener('click', async () => {
+    const reportType = document.getElementById('reportType').value;
+    const department = document.getElementById('departmentSelect').value;
+    const employee = document.getElementById('employeeSelect').value;
+    const month = document.getElementById('monthPicker').value; // yyyy-mm
+    const displayType = document.getElementById('displayType').value;
+
+    // แปลงเดือนเป็นช่วงวันที่
+    let startDate, endDate;
+    if (month) {
+      startDate = new Date(month + '-01');
+      endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      endDate.setDate(endDate.getDate() - 1);
+    }
+
+    // Query data จาก Supabase
+    let query = supabase.from('leave_requests').select(`
+      user:user_id(id, name, department),
+      leave_type, date_start, date_end, leave_days, leave_mode, reason, status
+    `).eq('status', 'approved');
+
+    if (department) query = query.eq('user.department', department);
+    if (employee) query = query.eq('user.id', employee);
+    if (startDate && endDate) query = query.gte('date_start', startDate.toISOString()).lte('date_end', endDate.toISOString());
+
+    const { data, error } = await query;
+    if (error) return alert('โหลดข้อมูลล้มเหลว: ' + error.message);
+
+    if (displayType === 'table') {
+      renderTable(data, reportType);
+    } else {
+      renderChart(data, reportType);
+    }
+  });
+
+  function renderTable(data, reportType) {
+    const container = document.getElementById('reportResult');
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p>ไม่มีข้อมูล</p>';
+      return;
+    }
+    if (reportType === 'detailed') {
+      let html = `<table class="table table-striped"><thead><tr>
+        <th>ชื่อ</th><th>แผนก</th><th>ประเภทลา</th><th>วันที่เริ่ม</th><th>วันที่สิ้นสุด</th><th>จำนวนวัน</th><th>โหมดลา</th><th>เหตุผล</th>
+      </tr></thead><tbody>`;
+      data.forEach(r => {
+        html += `<tr>
+          <td>${r.user?.name || '-'}</td>
+          <td>${r.user?.department || '-'}</td>
+          <td>${r.leave_type}</td>
+          <td>${new Date(r.date_start).toLocaleDateString()}</td>
+          <td>${new Date(r.date_end).toLocaleDateString()}</td>
+          <td>${r.leave_days}</td>
+          <td>${leaveModeLabel(r.leave_mode)}</td>
+          <td>${r.reason || '-'}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    } else if (reportType === 'summary') {
+      // สรุปแบบรวม: รวมจำนวนวันลาแยกตามประเภท
+      const summary = {};
+      data.forEach(r => {
+        const key = r.leave_type;
+        summary[key] = (summary[key] || 0) + r.leave_days;
+      });
+      let html = `<table class="table table-striped"><thead><tr><th>ประเภทลา</th><th>จำนวนวัน</th></tr></thead><tbody>`;
+      Object.entries(summary).forEach(([type, days]) => {
+        html += `<tr><td>${type}</td><td>${days}</td></tr>`;
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+    if(reportChart){
+      reportChart.destroy();
+      reportChart = null;
+    }
+  }
+
+  function renderChart(data, reportType) {
+    const container = document.getElementById('reportResult');
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p>ไม่มีข้อมูล</p>';
+      return;
+    }
+    container.innerHTML = `<canvas id="reportChart"></canvas>`;
+    const ctx = document.getElementById('reportChart').getContext('2d');
+
+    const summary = {};
+    data.forEach(r => {
+      const key = r.leave_type;
+      summary[key] = (summary[key] || 0) + r.leave_days;
+    });
+
+    const labels = Object.keys(summary);
+    const values = Object.values(summary);
+
+    if(reportChart){
+      reportChart.destroy();
+    }
+    reportChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'จำนวนวันลา',
+          data: values,
+          backgroundColor: labels.map(() => randomColor())
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: 'สรุปจำนวนวันลา ตามประเภทลา' }
+        }
+      }
+    });
+  }
+
+  // Export PDF (jsPDF)
+  document.getElementById('btnExportPdf').addEventListener('click', () => {
+    const container = document.getElementById('reportResult');
+    if (!container.innerText.trim()) return alert('ยังไม่มีรายงานให้ส่งออก');
+
+    const doc = new jsPDF();
+    doc.text('รายงานการลา', 10, 10);
+    doc.text(container.innerText, 10, 20);
+    doc.save('report_leave.pdf');
+  });
+
+  // Export Excel (SheetJS)
+  document.getElementById('btnExportExcel').addEventListener('click', () => {
+    const container = document.getElementById('reportResult');
+    if (!container.innerText.trim()) return alert('ยังไม่มีรายงานให้ส่งออก');
+
+    /* สร้าง workbook จากตาราง */
+    const table = container.querySelector('table');
+    if (!table) return alert('ไม่มีตารางให้ส่งออก');
+
+    const workbook = XLSX.utils.table_to_book(table, { sheet: "Report" });
+    XLSX.writeFile(workbook, 'report_leave.xlsx');
+  });
 
   async function loadLeaveRequests() {
     const { data: leaveData } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
