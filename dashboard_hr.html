@@ -174,11 +174,17 @@
     }
 
     // Query data จาก Supabase
+    //let query = supabase.from('leave_requests').select(`
+     //user:user_id(id, name, department),
+      //leave_type, date_start, date_end, leave_days, leave_mode, reason, status
+    //`).eq('status', 'approved');
     let query = supabase.from('leave_requests').select(`
-      user:user_id(id, name, department),
-      leave_type, date_start, date_end, leave_days, leave_mode, reason, status
-    `).eq('status', 'approved');
+  user:user_id(id, name, department),
+  leave_type, date_start, date_end, leave_days, leave_mode, reason, status
+`).eq('status', 'approved');
 
+
+    
     if (department) query = query.eq('user.department', department);
     if (employee) query = query.eq('user.id', employee);
     if (startDate && endDate) query = query.gte('date_start', startDate.toISOString()).lte('date_end', endDate.toISOString());
