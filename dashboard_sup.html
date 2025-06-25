@@ -89,12 +89,6 @@
       await loadPendingRequests();
       await loadHistory();
       await loadChart();
-
-      // ผูกปุ่ม logout
-      document.getElementById('btnLogout').addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        location.href = 'index.html';
-      });
     }
 
     async function loadPendingRequests() {
@@ -206,6 +200,10 @@
         day: 'numeric'
       });
     }
+document.getElementById('btnLogout').addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  location.href = 'index.html';
+});
 
     init();
   </script>
