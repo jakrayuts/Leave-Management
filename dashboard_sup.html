@@ -66,45 +66,92 @@
 
     let currentUser, currentDepartment, userMap = {};
 
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return location.href = 'index.html';
+ async function init() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return location.href = 'index.html';
 
-      const { data: userInfo } = await supabase
-        .from('users')
-        .select('role, department')
-        .eq('id', user.id)
-        .maybeSingle();
+  const { data: userInfo } = await supabase
+    .from('users')
+    .select('role, department')
+    .eq('id', user.id)
+    .maybeSingle();
 
-      if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
-        console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
-        return location.href = 'index.html';
-      }
+  if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
+    console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
+    return location.href = 'index.html';
+  }
 
-      currentUser = user;
-      currentDepartment = (userInfo.department || '').toLowerCase();
+  currentUser = user;
+  currentDepartment = (userInfo.department || '').toLowerCase().trim();
 
-      const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
-      if (userErr || !allUsers) {
-        console.error("โหลด users ล้มเหลว", userErr);
-        return;
-      }
+  const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
+  if (userErr || !allUsers) {
+    console.error("โหลด users ล้มเหลว", userErr);
+    return;
+  }
 
-      allUsers.forEach(u => {
-        userMap[u.id] = {
-          name: u.name,
-          department: (u.department || '').toLowerCase()
-        };
-      });
+  allUsers.forEach(u => {
+    userMap[u.id] = {
+      name: u.name,
+      department: (u.department || '').toLowerCase().trim()
+    };
+  });
 
-      console.log("✅ Logged in user:", user);
-      console.log("✅ User info:", userInfo);
-      console.log("✅ All users loaded:", userMap);
+  console.log("Logged in user:", user);
+  console.log("User info:", userInfo);
+  console.log("All users:", userMap);
 
-      await loadPendingRequests();
-      await loadHistory();
-      await loadChart();
-    }
+  await loadPendingRequests();
+  await loadHistory();
+  await loadChart();
+}
+
+async function loadPendingRequests() {
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .eq('status', 'pending');
+
+  if (error) {
+    console.error('โหลดคำขอลาผิดพลาด', error);
+    return;
+  }
+
+  console.log('คำขอทั้งหมดก่อนกรอง:', data);
+
+  const filtered = data.filter(r => {
+    const userDept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
+    console.log('user_id:', r.user_id, 'userDept:', userDept, 'currentDepartment:', currentDepartment);
+    return userDept === currentDepartment;
+  });
+
+  console.log("คำขอลาที่กรองแล้ว:", filtered);
+  renderLeaveRequestsTable(filtered);
+}
+
+async function loadHistory() {
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .not('status', 'eq', 'pending');
+
+  if (error) {
+    console.error('โหลดประวัติคำขอลาผิดพลาด', error);
+    return;
+  }
+
+  console.log('ประวัติคำขอทั้งหมดก่อนกรอง:', data);
+
+  const filtered = data.filter(r => {
+    const userDept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
+    console.log('user_id:', r.user_id, 'userDept:', userDept, 'currentDepartment:', currentDepartment);
+    return userDept === currentDepartment;
+  });
+
+  console.log("ประวัติคำขอลาที่กรองแล้ว:", filtered);
+  renderLeaveHistoryTable(filtered);
+}
+
 
     async function loadPendingRequests() {
       const { data, error } = await supabase
