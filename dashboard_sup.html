@@ -132,23 +132,28 @@
       await loadChart();
     }
 
-    async function loadPendingRequests() {
-      const { data, error } = await supabase
-        .from("leave_requests")
-        .select("*")
-        .eq("status", "pending");
+   async function loadPendingRequests() {
+  const { data, error } = await supabase
+    .from("leave_requests")
+    .select("*")
+    .eq("status", "pending");
 
-      if (error) return console.error("โหลดคำขอลาผิดพลาด", error);
+  if (error) return console.error("โหลดคำขอลาผิดพลาด", error);
 
-      console.log("Raw leave_requests pending data:", data);
+  console.log("Raw leave_requests pending data:", data);
 
-      const filtered = data.filter(
-        r => userMap[r.user_id]?.department === currentDepartment
-      );
+  // ถ้าต้องการลองดูข้อมูลทั้งหมด ไม่กรองแผนกก่อน
+  // renderLeaveRequestsTable(data);
 
-      console.log("Filtered pending requests:", filtered);
-      renderLeaveRequestsTable(filtered);
-    }
+  // แต่ถ้ากรองแผนกจริง ให้เช็คตัวแปรก่อนกรองด้วย
+  const filtered = data.filter(
+    r => userMap[r.user_id]?.department === currentDepartment
+  );
+
+  console.log("Filtered pending requests:", filtered);
+  renderLeaveRequestsTable(filtered);
+}
+
 
     async function loadHistory() {
       const { data, error } = await supabase
