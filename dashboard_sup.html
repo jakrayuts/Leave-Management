@@ -89,7 +89,7 @@ async function init() {
   currentUser = user;
   currentDepartment = normalize(userInfo.department);
 
-  const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
+  const { data: allUsers, error: userErr } = await supabase.from('users').select('*');
   if (userErr || !allUsers) return console.error("โหลด users ล้มเหลว", userErr);
 
   allUsers.forEach(u => {
