@@ -66,41 +66,46 @@
 
     let currentUser, currentDepartment, userMap = {};
 
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return location.href = 'index.html';
+async function init() {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  console.log('Logged in user:', user, userError);
+  if (!user) return location.href = 'index.html';
 
-      const { data: userInfo } = await supabase
-        .from('users')
-        .select('role, department')
-        .eq('id', user.id)
-        .maybeSingle();
+  const { data: userInfo, error: infoError } = await supabase
+    .from('users')
+    .select('role, department')
+    .eq('id', user.id)
+    .maybeSingle();
 
-      if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
-        console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
-        return location.href = 'index.html';
-      }
+  console.log('User info:', userInfo, infoError);
 
-      currentUser = user;
-      currentDepartment = (userInfo.department || '').toLowerCase();
+  if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
+    console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
+    return location.href = 'index.html';
+  }
 
-      const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
-      if (userErr || !allUsers) {
-        console.error("โหลด users ล้มเหลว", userErr);
-        return;
-      }
+  currentUser = user;
+  currentDepartment = (userInfo.department || '').toLowerCase();
 
-      allUsers.forEach(u => {
-        userMap[u.id] = {
-          name: u.name,
-          department: (u.department || '').toLowerCase()
-        };
-      });
+  const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
+  if (userErr || !allUsers) {
+    console.error("โหลด users ล้มเหลว", userErr);
+    return;
+  }
+  console.log('All users:', allUsers);
 
-      await loadPendingRequests();
-      await loadHistory();
-      await loadChart();
-    }
+  allUsers.forEach(u => {
+    userMap[u.id] = {
+      name: u.name,
+      department: (u.department || '').toLowerCase()
+    };
+  });
+
+  await loadPendingRequests();
+  await loadHistory();
+  await loadChart();
+}
+
 
     async function loadPendingRequests() {
       const { data, error } = await supabase
