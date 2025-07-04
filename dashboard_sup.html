@@ -106,6 +106,7 @@
   await loadChart();
 }
 
+// ตัวอย่างโครงสร้างฟังก์ชัน loadPendingRequests ที่แก้ไขแล้ว
 async function loadPendingRequests() {
   const { data, error } = await supabase
     .from('leave_requests')
@@ -117,17 +118,14 @@ async function loadPendingRequests() {
     return;
   }
 
-  console.log('คำขอทั้งหมดก่อนกรอง:', data);
-
   const filtered = data.filter(r => {
     const userDept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
-    console.log('user_id:', r.user_id, 'userDept:', userDept, 'currentDepartment:', currentDepartment);
     return userDept === currentDepartment;
   });
 
-  console.log("คำขอลาที่กรองแล้ว:", filtered);
   renderLeaveRequestsTable(filtered);
 }
+
 
 async function loadHistory() {
   const { data, error } = await supabase
