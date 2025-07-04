@@ -76,7 +76,7 @@
         .eq('id', user.id)
         .maybeSingle();
 
-      if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
+      if (!userInfo || String(userInfo.role).toLowerCase() !== 'supervisor') {
         console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
         return location.href = 'index.html';
       }
@@ -84,22 +84,19 @@
       currentUser = user;
       currentDepartment = (userInfo.department || '').toLowerCase().trim();
 
-      const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
-      if (userErr || !allUsers) {
-        console.error("โหลด users ล้มเหลว", userErr);
-        return;
-      }
+      const { data: allUsers, error } = await supabase.from('users').select('id, name, department');
+      if (error) return console.error("โหลด users ล้มเหลว", error);
 
       allUsers.forEach(u => {
         userMap[u.id] = {
           name: u.name,
-          department: (u.department || '').trim()
+          department: (u.department || '').toLowerCase().trim()
         };
       });
 
-      console.log("Logged in user:", user);
-      console.log("User info:", userInfo);
-      console.log("All users:", userMap);
+      console.log("✅ Logged in user:", user);
+      console.log("✅ User info:", userInfo);
+      console.log("✅ All users:", userMap);
 
       await loadPendingRequests();
       await loadHistory();
@@ -108,37 +105,31 @@
 
     async function loadPendingRequests() {
       const { data, error } = await supabase.from('leave_requests').select('*').eq('status', 'pending');
-      if (error) {
-        console.error('โหลดคำขอลาผิดพลาด', error);
-        return;
-      }
+      if (error) return console.error('โหลดคำขอลาผิดพลาด', error);
 
-      console.log("Raw leave_requests pending data:", data);
+      console.log("🔍 Raw leave_requests pending data:", data);
 
       const filtered = data.filter(r => {
-        const userDept = userMap[r.user_id]?.department || '';
-        return userDept.toLowerCase() === currentDepartment;
+        const dept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
+        return dept === currentDepartment;
       });
 
-      console.log("Filtered pending requests:", filtered);
+      console.log("✅ Filtered pending requests:", filtered);
       renderLeaveRequestsTable(filtered);
     }
 
     async function loadHistory() {
       const { data, error } = await supabase.from('leave_requests').select('*').not('status', 'eq', 'pending');
-      if (error) {
-        console.error('โหลดประวัติคำขอลาผิดพลาด', error);
-        return;
-      }
+      if (error) return console.error('โหลดประวัติคำขอลาผิดพลาด', error);
 
-      console.log("Raw leave_requests history data:", data);
+      console.log("📜 Raw leave_requests history data:", data);
 
       const filtered = data.filter(r => {
-        const userDept = userMap[r.user_id]?.department || '';
-        return userDept.toLowerCase() === currentDepartment;
+        const dept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
+        return dept === currentDepartment;
       });
 
-      console.log("Filtered history requests:", filtered);
+      console.log("✅ Filtered history requests:", filtered);
       renderLeaveHistoryTable(filtered);
     }
 
@@ -151,8 +142,8 @@
       if (error) return console.error('โหลดกราฟล้มเหลว:', error);
 
       const filtered = data.filter(r => {
-        const u = userMap[r.user_id];
-        return u && u.department.toLowerCase() === currentDepartment;
+        const dept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
+        return dept === currentDepartment;
       });
 
       const summary = {};
@@ -188,7 +179,6 @@
       const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
       if (error) {
         alert('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
-        console.error(error);
         return;
       }
       await loadPendingRequests();
@@ -199,9 +189,7 @@
     function formatDate(d) {
       if (!d) return '-';
       return new Date(d).toLocaleDateString('th-TH', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
+        year: 'numeric', month: 'short', day: 'numeric'
       });
     }
 
