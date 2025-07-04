@@ -71,14 +71,13 @@
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return location.href = 'index.html';
 
-      // ดึงข้อมูลผู้ใช้งาน
-      const { data: userInfo } = await supabase
+      const { data: userInfo, error } = await supabase
         .from('users')
         .select('role, department')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (!userInfo || userInfo.role?.toLowerCase() !== 'supervisor') {
+      if (!userInfo || userInfo.role?.toLowerCase() !== 'Supervisor') {
         console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
         return location.href = 'index.html';
       }
@@ -86,9 +85,8 @@
       currentUser = user;
       currentDepartment = userInfo.department;
 
-      // โหลด user ทั้งหมด
       const { data: allUsers } = await supabase.from('users').select('id, name, department');
-      allUsers.forEach(u => userMap[u.id] = u);
+      allUsers?.forEach(u => userMap[u.id] = u);
 
       await loadPendingRequests();
       await loadHistory();
@@ -102,16 +100,16 @@
         .eq('status', 'pending');
 
       if (error) return console.error('โหลด pending ล้มเหลว:', error);
+
       const tbody = document.querySelector('#pendingTable tbody');
       tbody.innerHTML = '';
 
       const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
-
       filtered.forEach(r => {
         const u = userMap[r.user_id];
         tbody.innerHTML += `
           <tr>
-            <td>${u?.name || 'ไม่ทราบชื่อ'}</td>
+            <td>${u?.name || '-'}</td>
             <td>${r.leave_type}</td>
             <td>${formatDate(r.date_start)}</td>
             <td>${formatDate(r.date_end)}</td>
@@ -132,16 +130,16 @@
         .in('status', ['approved', 'rejected']);
 
       if (error) return console.error('โหลดประวัติล้มเหลว:', error);
+
       const tbody = document.querySelector('#historyTable tbody');
       tbody.innerHTML = '';
 
       const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
-
       filtered.forEach(r => {
         const u = userMap[r.user_id];
         tbody.innerHTML += `
           <tr>
-            <td>${u?.name || 'ไม่ทราบชื่อ'}</td>
+            <td>${u?.name || '-'}</td>
             <td>${r.leave_type}</td>
             <td>${formatDate(r.date_start)}</td>
             <td><span class="badge bg-${r.status === 'approved' ? 'success' : 'danger'}">${r.status}</span></td>
@@ -157,8 +155,8 @@
         .eq('status', 'approved');
 
       if (error) return console.error('โหลดกราฟล้มเหลว:', error);
-      const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
 
+      const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
       const summary = {};
       filtered.forEach(r => {
         summary[r.leave_type] = (summary[r.leave_type] || 0) + r.leave_days;
