@@ -66,16 +66,17 @@
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return location.href = 'index.html';
 
-      const { data: userInfo } = await supabase
-        .from('users')
-        .select('role, department')
-        .eq('id', user.id)
-        .maybeSingle();
+     const { data: userInfo } = await supabase
+  .from('users')
+  .select('role, department')
+  .eq('id', user.id)
+  .maybeSingle();
 
-      if (!userInfo || (userInfo.role + '').toLowerCase() !== 'supervisor') {
-        console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
-        return location.href = 'index.html';
-      }
+if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
+  console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
+  return location.href = 'index.html';
+}
+
 
       currentUser = user;
       currentDepartment = userInfo.department;
