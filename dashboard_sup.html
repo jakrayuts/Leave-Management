@@ -67,37 +67,33 @@
     let currentUser, currentDepartment, userMap = {};
 
 async function init() {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  console.log('Logged in user:', user, userError);
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return location.href = 'index.html';
 
-  const { data: userInfo, error: infoError } = await supabase
+  const { data: userInfo } = await supabase
     .from('users')
     .select('role, department')
     .eq('id', user.id)
     .maybeSingle();
 
-  console.log('User info:', userInfo, infoError);
-
-  if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
+  if (!userInfo || String(userInfo.role || '').toLowerCase() !== 'supervisor') {
     console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
     return location.href = 'index.html';
   }
 
   currentUser = user;
-  currentDepartment = (userInfo.department || '').toLowerCase();
+  currentDepartment = userInfo.department; // เก็บตรงๆ
 
   const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
   if (userErr || !allUsers) {
     console.error("โหลด users ล้มเหลว", userErr);
     return;
   }
-  console.log('All users:', allUsers);
 
   allUsers.forEach(u => {
     userMap[u.id] = {
       name: u.name,
-      department: (u.department || '').toLowerCase()
+      department: u.department // เก็บตรงๆ
     };
   });
 
@@ -107,38 +103,40 @@ async function init() {
 }
 
 
-    async function loadPendingRequests() {
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('status', 'pending');
 
-      if (error) return console.error('โหลด pending ล้มเหลว:', error);
-      const tbody = document.querySelector('#pendingTable tbody');
-      tbody.innerHTML = '';
+async function loadPendingRequests() {
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .eq('status', 'pending');
 
-      const filtered = data.filter(r => {
-        const u = userMap[r.user_id];
-        return u && u.department === currentDepartment;
-      });
+  if (error) return console.error('โหลด pending ล้มเหลว:', error);
+  const tbody = document.querySelector('#pendingTable tbody');
+  tbody.innerHTML = '';
 
-      filtered.forEach(r => {
-        const u = userMap[r.user_id];
-        tbody.innerHTML += `
-          <tr>
-            <td>${u?.name || 'ไม่ทราบชื่อ'}</td>
-            <td>${r.leave_type}</td>
-            <td>${formatDate(r.date_start)}</td>
-            <td>${formatDate(r.date_end)}</td>
-            <td>${r.leave_days}</td>
-            <td>${r.reason || '-'}</td>
-            <td>
-              <button class="btn btn-sm btn-success me-1" onclick="handleDecision('${r.id}', 'approved')">✅ อนุมัติ</button>
-              <button class="btn btn-sm btn-danger" onclick="handleDecision('${r.id}', 'rejected')">❌ ปฏิเสธ</button>
-            </td>
-          </tr>`;
-      });
-    }
+  const filtered = data.filter(r => {
+    const userDept = (userMap[r.user_id]?.department || '').toLowerCase();
+    return userDept === currentDepartment.toLowerCase();
+  });
+
+  filtered.forEach(r => {
+    const u = userMap[r.user_id];
+    tbody.innerHTML += `
+      <tr>
+        <td>${u?.name || 'ไม่ทราบชื่อ'}</td>
+        <td>${r.leave_type}</td>
+        <td>${formatDate(r.date_start)}</td>
+        <td>${formatDate(r.date_end)}</td>
+        <td>${r.leave_days}</td>
+        <td>${r.reason || '-'}</td>
+        <td>
+          <button class="btn btn-sm btn-success me-1" onclick="handleDecision('${r.id}', 'approved')">✅ อนุมัติ</button>
+          <button class="btn btn-sm btn-danger" onclick="handleDecision('${r.id}', 'rejected')">❌ ปฏิเสธ</button>
+        </td>
+      </tr>`;
+  });
+}
+
 
     async function loadHistory() {
       const { data, error } = await supabase
