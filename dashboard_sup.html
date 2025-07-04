@@ -56,129 +56,174 @@
     </div>
   </div>
 
-  <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    const supabase = createClient(
-      'https://bokajbbrctsuqeyvykgb.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
-    );
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    let currentUser, currentDepartment, userMap = {};
+const supabase = createClient(
+  'https://bokajbbrctsuqeyvykgb.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
+);
 
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return location.href = 'index.html';
+let currentUser, currentDepartment, userMap = {};
 
-      const { data: userInfo } = await supabase.from('users').select('role, department').eq('id', user.id).maybeSingle();
-      if (!userInfo || String(userInfo.role).toLowerCase() !== 'supervisor') return location.href = 'index.html';
+async function init() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return location.href = 'index.html';
 
-      currentUser = user;
-      currentDepartment = (userInfo.department || '').toLowerCase();
+  const { data: userInfo } = await supabase
+    .from('users')
+    .select('role, department')
+    .eq('id', user.id)
+    .maybeSingle();
 
-      const { data: allUsers } = await supabase.from('users').select('id, name, department');
-      allUsers.forEach(u => {
-        userMap[u.id] = { name: u.name, department: (u.department || '').toLowerCase() };
-      });
+  if (!userInfo || String(userInfo.role || '').toLowerCase() !== 'supervisor') {
+    console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
+    return location.href = 'index.html';
+  }
 
-      await loadPendingRequests();
-      await loadHistory();
-      await loadChart();
-    }
+  currentUser = user;
+  currentDepartment = (userInfo.department || '').toLowerCase();
 
-    async function loadPendingRequests() {
-      const { data } = await supabase.from('leave_requests').select('*').eq('status', 'pending');
-      const filtered = data.filter(r => (userMap[r.user_id]?.department || '').toLowerCase() === currentDepartment);
-      renderLeaveRequestsTable(filtered);
-    }
+  const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
+  if (userErr || !allUsers) {
+    console.error("โหลด users ล้มเหลว", userErr);
+    return;
+  }
 
-    async function loadHistory() {
-      const { data } = await supabase.from('leave_requests').select('*').not('status', 'eq', 'pending');
-      const filtered = data.filter(r => (userMap[r.user_id]?.department || '').toLowerCase() === currentDepartment);
-      renderLeaveHistoryTable(filtered);
-    }
-
-    async function loadChart() {
-      const { data } = await supabase.from('leave_requests').select('leave_type, leave_days, user_id').eq('status', 'approved');
-      const filtered = data.filter(r => (userMap[r.user_id]?.department || '').toLowerCase() === currentDepartment);
-      const summary = {};
-      filtered.forEach(r => { summary[r.leave_type] = (summary[r.leave_type] || 0) + r.leave_days; });
-      const ctx = document.getElementById('chartDeptLeave').getContext('2d');
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: Object.keys(summary),
-          datasets: [{
-            label: 'จำนวนวันลา',
-            data: Object.values(summary),
-            backgroundColor: Object.keys(summary).map(() => `hsl(${Math.random() * 360}, 70%, 70%)`)
-          }]
-        },
-        options: { responsive: true, plugins: { title: { display: true, text: 'จำนวนวันลาแยกตามประเภท' }, legend: { display: false } } }
-      });
-    }
-
-    window.handleDecision = async (id, status) => {
-      await supabase.from('leave_requests').update({ status }).eq('id', id);
-      await loadPendingRequests();
-      await loadHistory();
-      await loadChart();
+  allUsers.forEach(u => {
+    userMap[u.id] = {
+      name: u.name,
+      department: (u.department || '').toLowerCase()
     };
+  });
 
-    function renderLeaveRequestsTable(requests) {
-      const tbody = document.querySelector('#pendingTable tbody');
-      tbody.innerHTML = '';
-      if (!requests.length) return tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">ไม่มีคำขอที่รอดำเนินการ</td></tr>';
-      requests.forEach(req => {
-        const user = userMap[req.user_id] || {};
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${user.name || '-'}</td>
-          <td>${req.leave_type}</td>
-          <td>${formatDate(req.date_start)}</td>
-          <td>${formatDate(req.date_end)}</td>
-          <td>${req.leave_days}</td>
-          <td>${req.reason}</td>
-          <td>
-            <button class="btn btn-sm btn-success me-1" onclick="handleDecision('${req.id}', 'approved')">✅ อนุมัติ</button>
-            <button class="btn btn-sm btn-danger" onclick="handleDecision('${req.id}', 'rejected')">❌ ปฏิเสธ</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+  console.log("✅ Logged in user:", user);
+  console.log("✅ User info:", userInfo);
+  console.log("✅ All users loaded:", userMap);
+
+  await loadPendingRequests();
+  await loadHistory();
+  await loadChart();
+}
+
+async function loadPendingRequests() {
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .eq('status', 'pending');
+
+  if (error) {
+    console.error('โหลดคำขอลาผิดพลาด', error);
+    return;
+  }
+
+  if (!Object.keys(userMap).length) {
+    console.warn("❗ userMap ยังไม่โหลด");
+    return;
+  }
+
+  console.log("📥 คำขอทั้งหมดก่อนกรอง:", data);
+
+  const filtered = data.filter(r => {
+    const mapEntry = userMap[r.user_id];
+    const userDept = (mapEntry?.department || '').toLowerCase();
+    console.log(`🔎 กำลังตรวจสอบ user_id=${r.user_id}:`, mapEntry, "→", userDept);
+    return userDept === currentDepartment;
+  });
+
+  console.log("✅ คำขอลาที่กรองแล้ว:", filtered);
+  renderLeaveRequestsTable(filtered);
+}
+
+async function loadHistory() {
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .not('status', 'eq', 'pending');
+
+  if (error) {
+    console.error('โหลดประวัติคำขอลาผิดพลาด', error);
+    return;
+  }
+
+  const filtered = data.filter(r => {
+    const userDept = (userMap[r.user_id]?.department || '').toLowerCase();
+    return userDept === currentDepartment;
+  });
+
+  console.log("📜 ประวัติคำขอลาที่กรองแล้ว:", filtered);
+  renderLeaveHistoryTable(filtered);
+}
+
+async function loadChart() {
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('leave_type, leave_days, user_id')
+    .eq('status', 'approved');
+
+  if (error) {
+    console.error('โหลดกราฟล้มเหลว:', error);
+    return;
+  }
+
+  const filtered = data.filter(r => {
+    const u = userMap[r.user_id];
+    return u && u.department === currentDepartment;
+  });
+
+  const summary = {};
+  filtered.forEach(r => {
+    summary[r.leave_type] = (summary[r.leave_type] || 0) + r.leave_days;
+  });
+
+  const labels = Object.keys(summary);
+  const values = Object.values(summary);
+  const ctx = document.getElementById('chartDeptLeave').getContext('2d');
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'จำนวนวันลา',
+        data: values,
+        backgroundColor: labels.map(() => `hsl(${Math.random() * 360}, 70%, 70%)`)
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'จำนวนวันลาแยกตามประเภท' },
+        legend: { display: false }
+      }
     }
+  });
+}
 
-    function renderLeaveHistoryTable(records) {
-      const tbody = document.querySelector('#historyTable tbody');
-      tbody.innerHTML = '';
-      if (!records.length) return tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">ยังไม่มีประวัติการดำเนินการ</td></tr>';
-      records.forEach(rec => {
-        const user = userMap[rec.user_id] || {};
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${user.name || '-'}</td>
-          <td>${rec.leave_type}</td>
-          <td>${formatDate(rec.date_start)} ถึง ${formatDate(rec.date_end)}</td>
-          <td><span class="badge bg-${rec.status === 'approved' ? 'success' : 'danger'}">${rec.status}</span></td>
-          <td>${rec.reason}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+window.handleDecision = async (id, status) => {
+  await supabase.from('leave_requests').update({ status }).eq('id', id);
+  await loadPendingRequests();
+  await loadHistory();
+  await loadChart();
+};
 
-    function formatDate(d) {
-      return new Date(d).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'short', day: 'numeric'
-      });
-    }
+function formatDate(d) {
+  return new Date(d).toLocaleDateString('th-TH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
 
-    window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('btnLogout').addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        location.href = 'index.html';
-      });
-      init();
-    });
-  </script>
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btnLogout').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    location.href = 'index.html';
+  });
+  init();
+});
+</script>
+
 </body>
 </html>
