@@ -16,20 +16,17 @@
 </head>
 <body>
   <div class="container">
-    <!-- ปุ่มออกจากระบบ -->
     <div class="d-flex justify-content-end mb-3">
       <button id="btnLogout" class="btn btn-outline-danger btn-sm">🚪 ออกจากระบบ</button>
     </div>
 
     <h2>👨‍💼 แดชบอร์ดผู้ควบคุม (Supervisor)</h2>
 
-    <!-- กราฟ -->
     <div class="card p-3 mb-4">
       <h5>📊 สรุปการลาในแผนกของคุณ</h5>
       <canvas id="chartDeptLeave" height="200"></canvas>
     </div>
 
-    <!-- คำขอลารออนุมัติ -->
     <div class="card p-3 mb-4">
       <h5>📄 คำขอลาที่รออนุมัติ</h5>
       <div class="table-responsive">
@@ -42,7 +39,6 @@
       </div>
     </div>
 
-    <!-- ประวัติคำขอ -->
     <div class="card p-3">
       <h5>🕘 ประวัติการอนุมัติ/ปฏิเสธ</h5>
       <div class="table-responsive">
@@ -56,7 +52,6 @@
     </div>
   </div>
 
-  <!-- JS -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
@@ -71,13 +66,13 @@
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return location.href = 'index.html';
 
-      const { data: userInfo, error } = await supabase
+      const { data: userInfo } = await supabase
         .from('users')
         .select('role, department')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (!userInfo || userInfo.role?.toLowerCase() !== 'Supervisor') {
+      if (!userInfo || (userInfo.role + '').toLowerCase() !== 'supervisor') {
         console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
         return location.href = 'index.html';
       }
@@ -85,8 +80,9 @@
       currentUser = user;
       currentDepartment = userInfo.department;
 
+      // โหลด user ทั้งหมดไว้จับคู่
       const { data: allUsers } = await supabase.from('users').select('id, name, department');
-      allUsers?.forEach(u => userMap[u.id] = u);
+      allUsers.forEach(u => userMap[u.id] = u);
 
       await loadPendingRequests();
       await loadHistory();
@@ -100,16 +96,16 @@
         .eq('status', 'pending');
 
       if (error) return console.error('โหลด pending ล้มเหลว:', error);
-
       const tbody = document.querySelector('#pendingTable tbody');
       tbody.innerHTML = '';
 
       const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
+
       filtered.forEach(r => {
         const u = userMap[r.user_id];
         tbody.innerHTML += `
           <tr>
-            <td>${u?.name || '-'}</td>
+            <td>${u?.name || 'ไม่ทราบชื่อ'}</td>
             <td>${r.leave_type}</td>
             <td>${formatDate(r.date_start)}</td>
             <td>${formatDate(r.date_end)}</td>
@@ -130,16 +126,16 @@
         .in('status', ['approved', 'rejected']);
 
       if (error) return console.error('โหลดประวัติล้มเหลว:', error);
-
       const tbody = document.querySelector('#historyTable tbody');
       tbody.innerHTML = '';
 
       const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
+
       filtered.forEach(r => {
         const u = userMap[r.user_id];
         tbody.innerHTML += `
           <tr>
-            <td>${u?.name || '-'}</td>
+            <td>${u?.name || 'ไม่ทราบชื่อ'}</td>
             <td>${r.leave_type}</td>
             <td>${formatDate(r.date_start)}</td>
             <td><span class="badge bg-${r.status === 'approved' ? 'success' : 'danger'}">${r.status}</span></td>
