@@ -56,7 +56,9 @@
     </div>
   </div>
 
-  <script type="module">
+ 
+
+<script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 const supabase = createClient(
@@ -64,11 +66,10 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
 );
 
-let currentUser, currentDepartment;
-const userMap = {};
+let currentUser, currentDepartment, userMap = {};
 
-function normalize(text) {
-  return (text || '').toLowerCase().trim();
+function normalize(str) {
+  return (str || '').toLowerCase().trim();
 }
 
 async function init() {
@@ -82,15 +83,14 @@ async function init() {
     .maybeSingle();
 
   if (!userInfo || normalize(userInfo.role) !== 'supervisor') {
-    console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
     return location.href = 'index.html';
   }
 
   currentUser = user;
   currentDepartment = normalize(userInfo.department);
 
-  const { data: allUsers, error } = await supabase.from('users').select('id, name, department');
-  if (error) return console.error('โหลด users ล้มเหลว:', error);
+  const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
+  if (userErr || !allUsers) return console.error("โหลด users ล้มเหลว", userErr);
 
   allUsers.forEach(u => {
     userMap[u.id] = {
@@ -114,12 +114,19 @@ async function loadPendingRequests() {
     .select('*')
     .eq('status', 'pending');
 
-  if (error) return console.error('โหลดคำขอลาผิดพลาด:', error);
+  if (error) {
+    console.error('โหลดคำขอลาผิดพลาด', error);
+    return;
+  }
+
   console.log("📥 Raw leave_requests pending data:", data);
 
-  const filtered = data.filter(r => normalize(userMap[r.user_id]?.department) === currentDepartment);
-  console.log("✅ Filtered pending requests:", filtered);
+  const filtered = data.filter(r => {
+    const userDept = normalize(userMap[r.user_id]?.department);
+    return userDept === currentDepartment;
+  });
 
+  console.log("✅ Filtered pending requests:", filtered);
   renderLeaveRequestsTable(filtered);
 }
 
@@ -129,12 +136,19 @@ async function loadHistory() {
     .select('*')
     .not('status', 'eq', 'pending');
 
-  if (error) return console.error('โหลดประวัติคำขอลาผิดพลาด:', error);
-  console.log("📘 Raw leave_requests history data:", data);
+  if (error) {
+    console.error('โหลดประวัติคำขอลาผิดพลาด', error);
+    return;
+  }
 
-  const filtered = data.filter(r => normalize(userMap[r.user_id]?.department) === currentDepartment);
-  console.log("📗 Filtered history requests:", filtered);
+  console.log("📥 Raw leave_requests history data:", data);
 
+  const filtered = data.filter(r => {
+    const userDept = normalize(userMap[r.user_id]?.department);
+    return userDept === currentDepartment;
+  });
+
+  console.log("✅ Filtered history requests:", filtered);
   renderLeaveHistoryTable(filtered);
 }
 
@@ -146,7 +160,10 @@ async function loadChart() {
 
   if (error) return console.error('โหลดกราฟล้มเหลว:', error);
 
-  const filtered = data.filter(r => normalize(userMap[r.user_id]?.department) === currentDepartment);
+  const filtered = data.filter(r => {
+    const u = userMap[r.user_id];
+    return u && u.department === currentDepartment;
+  });
 
   const summary = {};
   filtered.forEach(r => {
@@ -177,6 +194,18 @@ async function loadChart() {
   });
 }
 
+window.handleDecision = async (id, status) => {
+  const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
+  if (error) {
+    alert('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
+    console.error(error);
+    return;
+  }
+  await loadPendingRequests();
+  await loadHistory();
+  await loadChart();
+};
+
 function formatDate(d) {
   if (!d) return '-';
   return new Date(d).toLocaleDateString('th-TH', {
@@ -189,7 +218,6 @@ function formatDate(d) {
 function renderLeaveRequestsTable(data) {
   const tbody = document.querySelector('#pendingTable tbody');
   tbody.innerHTML = '';
-
   if (data.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" class="text-center">ไม่มีคำขอที่รอดำเนินการ</td></tr>`;
     return;
@@ -217,7 +245,6 @@ function renderLeaveRequestsTable(data) {
 function renderLeaveHistoryTable(data) {
   const tbody = document.querySelector('#historyTable tbody');
   tbody.innerHTML = '';
-
   if (data.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" class="text-center">ยังไม่มีประวัติการดำเนินการ</td></tr>`;
     return;
@@ -237,18 +264,6 @@ function renderLeaveHistoryTable(data) {
   });
 }
 
-window.handleDecision = async (id, status) => {
-  const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
-  if (error) {
-    alert('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
-    console.error(error);
-    return;
-  }
-  await loadPendingRequests();
-  await loadHistory();
-  await loadChart();
-};
-
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnLogout').addEventListener('click', async () => {
     await supabase.auth.signOut();
@@ -257,6 +272,7 @@ window.addEventListener('DOMContentLoaded', () => {
   init();
 });
 </script>
+
 
 </body>
 </html>
