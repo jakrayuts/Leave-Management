@@ -93,7 +93,7 @@
       allUsers.forEach(u => {
         userMap[u.id] = {
           name: u.name,
-          department: (u.department || '').toLowerCase().trim()
+          department: (u.department || '').trim()
         };
       });
 
@@ -107,51 +107,40 @@
     }
 
     async function loadPendingRequests() {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .select('*')
-    .eq('status', 'pending');
+      const { data, error } = await supabase.from('leave_requests').select('*').eq('status', 'pending');
+      if (error) {
+        console.error('โหลดคำขอลาผิดพลาด', error);
+        return;
+      }
 
-  if (error) {
-    console.error('โหลดคำขอลาผิดพลาด', error);
-    return;
-  }
+      console.log("Raw leave_requests pending data:", data);
 
-  console.log("Raw leave_requests pending data:", data);
+      const filtered = data.filter(r => {
+        const userDept = userMap[r.user_id]?.department || '';
+        return userDept.toLowerCase() === currentDepartment;
+      });
 
-  const filtered = data.filter(r => {
-    const userDept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
-    console.log(`Pending leave id=${r.id} userDept=${userDept} currentDept=${currentDepartment}`);
-    return userDept === currentDepartment;
-  });
+      console.log("Filtered pending requests:", filtered);
+      renderLeaveRequestsTable(filtered);
+    }
 
-  console.log("Filtered pending requests:", filtered);
-  renderLeaveRequestsTable(filtered);
-}
+    async function loadHistory() {
+      const { data, error } = await supabase.from('leave_requests').select('*').not('status', 'eq', 'pending');
+      if (error) {
+        console.error('โหลดประวัติคำขอลาผิดพลาด', error);
+        return;
+      }
 
-async function loadHistory() {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .select('*')
-    .not('status', 'eq', 'pending');
+      console.log("Raw leave_requests history data:", data);
 
-  if (error) {
-    console.error('โหลดประวัติคำขอลาผิดพลาด', error);
-    return;
-  }
+      const filtered = data.filter(r => {
+        const userDept = userMap[r.user_id]?.department || '';
+        return userDept.toLowerCase() === currentDepartment;
+      });
 
-  console.log("Raw leave_requests history data:", data);
-
-  const filtered = data.filter(r => {
-    const userDept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
-    console.log(`History leave id=${r.id} userDept=${userDept} currentDept=${currentDepartment}`);
-    return userDept === currentDepartment;
-  });
-
-  console.log("Filtered history requests:", filtered);
-  renderLeaveHistoryTable(filtered);
-}
-
+      console.log("Filtered history requests:", filtered);
+      renderLeaveHistoryTable(filtered);
+    }
 
     async function loadChart() {
       const { data, error } = await supabase
@@ -159,14 +148,11 @@ async function loadHistory() {
         .select('leave_type, leave_days, user_id')
         .eq('status', 'approved');
 
-      if (error) {
-        console.error('โหลดกราฟล้มเหลว:', error);
-        return;
-      }
+      if (error) return console.error('โหลดกราฟล้มเหลว:', error);
 
       const filtered = data.filter(r => {
         const u = userMap[r.user_id];
-        return u && u.department === currentDepartment;
+        return u && u.department.toLowerCase() === currentDepartment;
       });
 
       const summary = {};
@@ -222,12 +208,10 @@ async function loadHistory() {
     function renderLeaveRequestsTable(data) {
       const tbody = document.querySelector('#pendingTable tbody');
       tbody.innerHTML = '';
-
       if (data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center">ไม่มีคำขอที่รอดำเนินการ</td></tr>`;
         return;
       }
-
       data.forEach(item => {
         const name = userMap[item.user_id]?.name || 'ไม่ทราบชื่อ';
         tbody.innerHTML += `
@@ -250,12 +234,10 @@ async function loadHistory() {
     function renderLeaveHistoryTable(data) {
       const tbody = document.querySelector('#historyTable tbody');
       tbody.innerHTML = '';
-
       if (data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center">ยังไม่มีประวัติการดำเนินการ</td></tr>`;
         return;
       }
-
       data.forEach(item => {
         const name = userMap[item.user_id]?.name || 'ไม่ทราบชื่อ';
         tbody.innerHTML += `
