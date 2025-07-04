@@ -31,9 +31,11 @@
       <h5>📄 คำขอลาที่รออนุมัติ</h5>
       <div class="table-responsive">
         <table class="table table-striped" id="pendingTable">
-          <thead><tr>
-            <th>ชื่อ</th><th>ประเภทลา</th><th>วันที่เริ่ม</th><th>วันที่สิ้นสุด</th><th>จำนวนวัน</th><th>เหตุผล</th><th>การจัดการ</th>
-          </tr></thead>
+          <thead>
+            <tr>
+              <th>ชื่อ</th><th>ประเภทลา</th><th>วันที่เริ่ม</th><th>วันที่สิ้นสุด</th><th>จำนวนวัน</th><th>เหตุผล</th><th>การจัดการ</th>
+            </tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
@@ -43,9 +45,11 @@
       <h5>🕘 ประวัติการอนุมัติ/ปฏิเสธ</h5>
       <div class="table-responsive">
         <table class="table table-bordered table-sm" id="historyTable">
-          <thead><tr>
-            <th>ชื่อ</th><th>ประเภท</th><th>วันที่</th><th>สถานะ</th><th>เหตุผล</th>
-          </tr></thead>
+          <thead>
+            <tr>
+              <th>ชื่อ</th><th>ประเภท</th><th>วันที่</th><th>สถานะ</th><th>เหตุผล</th>
+            </tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
@@ -66,24 +70,32 @@
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return location.href = 'index.html';
 
-     const { data: userInfo } = await supabase
-  .from('users')
-  .select('role, department')
-  .eq('id', user.id)
-  .maybeSingle();
+      const { data: userInfo } = await supabase
+        .from('users')
+        .select('role, department')
+        .eq('id', user.id)
+        .maybeSingle();
 
-if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
-  console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
-  return location.href = 'index.html';
-}
-
+      if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
+        console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
+        return location.href = 'index.html';
+      }
 
       currentUser = user;
-      currentDepartment = userInfo.department;
+      currentDepartment = (userInfo.department || '').toLowerCase();
 
-      // โหลด user ทั้งหมดไว้จับคู่
-      const { data: allUsers } = await supabase.from('users').select('id, name, department');
-      allUsers.forEach(u => userMap[u.id] = u);
+      const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
+      if (userErr || !allUsers) {
+        console.error("โหลด users ล้มเหลว", userErr);
+        return;
+      }
+
+      allUsers.forEach(u => {
+        userMap[u.id] = {
+          name: u.name,
+          department: (u.department || '').toLowerCase()
+        };
+      });
 
       await loadPendingRequests();
       await loadHistory();
@@ -100,7 +112,10 @@ if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
       const tbody = document.querySelector('#pendingTable tbody');
       tbody.innerHTML = '';
 
-      const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
+      const filtered = data.filter(r => {
+        const u = userMap[r.user_id];
+        return u && u.department === currentDepartment;
+      });
 
       filtered.forEach(r => {
         const u = userMap[r.user_id];
@@ -130,7 +145,10 @@ if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
       const tbody = document.querySelector('#historyTable tbody');
       tbody.innerHTML = '';
 
-      const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
+      const filtered = data.filter(r => {
+        const u = userMap[r.user_id];
+        return u && u.department === currentDepartment;
+      });
 
       filtered.forEach(r => {
         const u = userMap[r.user_id];
@@ -152,8 +170,11 @@ if (!userInfo || (String(userInfo.role || '').toLowerCase() !== 'supervisor')) {
         .eq('status', 'approved');
 
       if (error) return console.error('โหลดกราฟล้มเหลว:', error);
+      const filtered = data.filter(r => {
+        const u = userMap[r.user_id];
+        return u && u.department === currentDepartment;
+      });
 
-      const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
       const summary = {};
       filtered.forEach(r => {
         summary[r.leave_type] = (summary[r.leave_type] || 0) + r.leave_days;
