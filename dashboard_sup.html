@@ -1,23 +1,41 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>แดชบอร์ด Supervisor</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; margin: 0; }
-    .container { padding: 2rem; }
-    h2 { margin-bottom: 1.5rem; }
-    .card { box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 10px; }
-    .badge { font-size: 0.9rem; }
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+    }
+    .container {
+      padding: 2rem;
+    }
+    h2 {
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+    }
+    .badge {
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="d-flex justify-content-end mb-3">
-      <button id="btnLogout" class="btn btn-outline-danger btn-sm">🚪 ออกจากระบบ</button>
+      <button id="btnLogout" class="btn btn-outline-danger btn-sm">
+        🚪 ออกจากระบบ
+      </button>
     </div>
 
     <h2>👨‍💼 แดชบอร์ดผู้ควบคุม (Supervisor)</h2>
@@ -33,7 +51,13 @@
         <table class="table table-striped" id="pendingTable">
           <thead>
             <tr>
-              <th>ชื่อ</th><th>ประเภทลา</th><th>วันที่เริ่ม</th><th>วันที่สิ้นสุด</th><th>จำนวนวัน</th><th>เหตุผล</th><th>การจัดการ</th>
+              <th>ชื่อ</th>
+              <th>ประเภทลา</th>
+              <th>วันที่เริ่ม</th>
+              <th>วันที่สิ้นสุด</th>
+              <th>จำนวนวัน</th>
+              <th>เหตุผล</th>
+              <th>การจัดการ</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -47,7 +71,11 @@
         <table class="table table-bordered table-sm" id="historyTable">
           <thead>
             <tr>
-              <th>ชื่อ</th><th>ประเภท</th><th>วันที่</th><th>สถานะ</th><th>เหตุผล</th>
+              <th>ชื่อ</th>
+              <th>ประเภท</th>
+              <th>วันที่</th>
+              <th>สถานะ</th>
+              <th>เหตุผล</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -57,38 +85,43 @@
   </div>
 
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
     const supabase = createClient(
-      'https://bokajbbrctsuqeyvykgb.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw'
+      "https://bokajbbrctsuqeyvykgb.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJva2FqYmJyY3RzdXFleXZ5a2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1NzM5NzksImV4cCI6MjA2NjE0OTk3OX0.ZLLi-wTqCmfzKs2ere8OsQXkAXsUfsBhF65I0UGptvw"
     );
 
     let currentUser, currentDepartment, userMap = {};
 
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return location.href = 'index.html';
+      if (!user) return location.href = "index.html";
 
       const { data: userInfo } = await supabase
-        .from('users')
-        .select('role, department')
-        .eq('id', user.id)
+        .from("users")
+        .select("role, department")
+        .eq("id", user.id)
         .maybeSingle();
 
-      if (!userInfo || userInfo.role?.toLowerCase() !== 'supervisor') {
-        console.warn('ไม่ได้รับอนุญาต:', userInfo?.role);
-        return location.href = 'index.html';
+      if (!userInfo || userInfo.role?.toLowerCase() !== "supervisor") {
+        console.warn("ไม่ได้รับอนุญาต:", userInfo?.role);
+        return location.href = "index.html";
       }
 
       currentUser = user;
-      currentDepartment = (userInfo.department || '').trim();
+      currentDepartment = (userInfo.department || "").trim().toUpperCase();
 
-      const { data: allUsers, error: userErr } = await supabase.from('users').select('id, name, department');
-      if (userErr || !allUsers) return;
+      const { data: allUsers, error: userErr } = await supabase
+        .from("users")
+        .select("id, name, department");
+      if (userErr || !allUsers) return console.error(userErr);
 
       allUsers.forEach(u => {
-        userMap[u.id] = { name: u.name, department: (u.department || '').trim() };
+        userMap[u.id] = { 
+          name: u.name, 
+          department: (u.department || "").trim().toUpperCase() 
+        };
       });
 
       console.log("User info:", userInfo);
@@ -101,43 +134,52 @@
 
     async function loadPendingRequests() {
       const { data, error } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('status', 'pending');
+        .from("leave_requests")
+        .select("*")
+        .eq("status", "pending");
 
-      if (error) return console.error('โหลดคำขอลาผิดพลาด', error);
+      if (error) return console.error("โหลดคำขอลาผิดพลาด", error);
 
       console.log("Raw leave_requests pending data:", data);
 
-      const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
+      const filtered = data.filter(
+        r => userMap[r.user_id]?.department === currentDepartment
+      );
+
       console.log("Filtered pending requests:", filtered);
       renderLeaveRequestsTable(filtered);
     }
 
     async function loadHistory() {
       const { data, error } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .not('status', 'eq', 'pending');
+        .from("leave_requests")
+        .select("*")
+        .neq("status", "pending");
 
-      if (error) return console.error('โหลดประวัติคำขอลาผิดพลาด', error);
+      if (error) return console.error("โหลดประวัติคำขอลาผิดพลาด", error);
 
       console.log("Raw leave_requests history data:", data);
 
-      const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
+      const filtered = data.filter(
+        r => userMap[r.user_id]?.department === currentDepartment
+      );
+
       console.log("Filtered history requests:", filtered);
       renderLeaveHistoryTable(filtered);
     }
 
     async function loadChart() {
       const { data, error } = await supabase
-        .from('leave_requests')
-        .select('leave_type, leave_days, user_id')
-        .eq('status', 'approved');
+        .from("leave_requests")
+        .select("leave_type, leave_days, user_id")
+        .eq("status", "approved");
 
-      if (error) return console.error('โหลดกราฟล้มเหลว:', error);
+      if (error) return console.error("โหลดกราฟล้มเหลว:", error);
 
-      const filtered = data.filter(r => userMap[r.user_id]?.department === currentDepartment);
+      const filtered = data.filter(
+        r => userMap[r.user_id]?.department === currentDepartment
+      );
+
       const summary = {};
       filtered.forEach(r => {
         summary[r.leave_type] = (summary[r.leave_type] || 0) + r.leave_days;
@@ -145,52 +187,63 @@
 
       const labels = Object.keys(summary);
       const values = Object.values(summary);
-      const ctx = document.getElementById('chartDeptLeave').getContext('2d');
 
+      const ctx = document.getElementById("chartDeptLeave").getContext("2d");
       new Chart(ctx, {
-        type: 'bar',
+        type: "bar",
         data: {
           labels,
-          datasets: [{
-            label: 'จำนวนวันลา',
-            data: values,
-            backgroundColor: labels.map(() => `hsl(${Math.random() * 360}, 70%, 70%)`)
-          }]
+          datasets: [
+            {
+              label: "จำนวนวันลา",
+              data: values,
+              backgroundColor: labels.map(
+                () => `hsl(${Math.random() * 360}, 70%, 70%)`
+              ),
+            },
+          ],
         },
         options: {
           responsive: true,
           plugins: {
-            title: { display: true, text: 'จำนวนวันลาแยกตามประเภท' },
-            legend: { display: false }
-          }
-        }
+            title: { display: true, text: "จำนวนวันลาแยกตามประเภท" },
+            legend: { display: false },
+          },
+        },
       });
     }
 
     window.handleDecision = async (id, status) => {
-      const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
-      if (error) return alert('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
+      const { error } = await supabase
+        .from("leave_requests")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) return alert("เกิดข้อผิดพลาดในการอัปเดตสถานะ");
+
       await loadPendingRequests();
       await loadHistory();
       await loadChart();
     };
 
     function formatDate(d) {
-      if (!d) return '-';
-      return new Date(d).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'short', day: 'numeric'
+      if (!d) return "-";
+      return new Date(d).toLocaleDateString("th-TH", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
     }
 
     function renderLeaveRequestsTable(data) {
-      const tbody = document.querySelector('#pendingTable tbody');
-      tbody.innerHTML = '';
+      const tbody = document.querySelector("#pendingTable tbody");
+      tbody.innerHTML = "";
       if (data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center">ไม่มีคำขอที่รอดำเนินการ</td></tr>`;
         return;
       }
-      data.forEach(item => {
-        const name = userMap[item.user_id]?.name || 'ไม่ทราบชื่อ';
+      data.forEach((item) => {
+        const name = userMap[item.user_id]?.name || "ไม่ทราบชื่อ";
         tbody.innerHTML += `
           <tr>
             <td>${name}</td>
@@ -208,14 +261,14 @@
     }
 
     function renderLeaveHistoryTable(data) {
-      const tbody = document.querySelector('#historyTable tbody');
-      tbody.innerHTML = '';
+      const tbody = document.querySelector("#historyTable tbody");
+      tbody.innerHTML = "";
       if (data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center">ยังไม่มีประวัติการดำเนินการ</td></tr>`;
         return;
       }
-      data.forEach(item => {
-        const name = userMap[item.user_id]?.name || 'ไม่ทราบชื่อ';
+      data.forEach((item) => {
+        const name = userMap[item.user_id]?.name || "ไม่ทราบชื่อ";
         tbody.innerHTML += `
           <tr>
             <td>${name}</td>
@@ -227,10 +280,10 @@
       });
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('btnLogout').addEventListener('click', async () => {
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("btnLogout").addEventListener("click", async () => {
         await supabase.auth.signOut();
-        location.href = 'index.html';
+        location.href = "index.html";
       });
       init();
     });
