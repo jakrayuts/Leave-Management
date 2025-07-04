@@ -107,42 +107,51 @@
     }
 
     async function loadPendingRequests() {
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('status', 'pending');
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .eq('status', 'pending');
 
-      if (error) {
-        console.error('โหลดคำขอลาผิดพลาด', error);
-        return;
-      }
+  if (error) {
+    console.error('โหลดคำขอลาผิดพลาด', error);
+    return;
+  }
 
-      const filtered = data.filter(r => {
-        const userDept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
-        return userDept === currentDepartment;
-      });
+  console.log("Raw leave_requests pending data:", data);
 
-      renderLeaveRequestsTable(filtered);
-    }
+  const filtered = data.filter(r => {
+    const userDept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
+    console.log(`Pending leave id=${r.id} userDept=${userDept} currentDept=${currentDepartment}`);
+    return userDept === currentDepartment;
+  });
 
-    async function loadHistory() {
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .not('status', 'eq', 'pending');
+  console.log("Filtered pending requests:", filtered);
+  renderLeaveRequestsTable(filtered);
+}
 
-      if (error) {
-        console.error('โหลดประวัติคำขอลาผิดพลาด', error);
-        return;
-      }
+async function loadHistory() {
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .not('status', 'eq', 'pending');
 
-      const filtered = data.filter(r => {
-        const userDept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
-        return userDept === currentDepartment;
-      });
+  if (error) {
+    console.error('โหลดประวัติคำขอลาผิดพลาด', error);
+    return;
+  }
 
-      renderLeaveHistoryTable(filtered);
-    }
+  console.log("Raw leave_requests history data:", data);
+
+  const filtered = data.filter(r => {
+    const userDept = (userMap[r.user_id]?.department || '').toLowerCase().trim();
+    console.log(`History leave id=${r.id} userDept=${userDept} currentDept=${currentDepartment}`);
+    return userDept === currentDepartment;
+  });
+
+  console.log("Filtered history requests:", filtered);
+  renderLeaveHistoryTable(filtered);
+}
+
 
     async function loadChart() {
       const { data, error } = await supabase
