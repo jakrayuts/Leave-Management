@@ -91,21 +91,25 @@
   );
     
     // ✅ โหลดแผนก
-    async function loadDepartments() {
-      const { data, error } = await supabaseClient.from('departments').select('dept_name');
-      if (error) {
-        console.error('โหลดแผนกล้มเหลว:', error.message);
-        return;
-      }
+   async function loadDepartments() {
+  const { data, error } = await supabaseClient
+    .from('departments')
+    .select('id, dept_name'); // ✅ เพิ่ม id ด้วย
 
-      const deptSelect = document.getElementById('departmentSelect');
-      data.forEach(row => {
-        const option = document.createElement('option');
-        option.value = row.dept_name;
-        option.textContent = row.dept_name;
-        deptSelect.appendChild(option);
-      });
-    }
+  if (error) {
+    console.error('โหลดแผนกล้มเหลว:', error.message);
+    return;
+  }
+
+  const deptSelect = document.getElementById('departmentSelect');
+  data.forEach(row => {
+    const option = document.createElement('option');
+    option.value = row.dept_name; // ✅ ใส่ id เป็น value
+    option.textContent = row.dept_name;
+    deptSelect.appendChild(option);
+  });
+}
+
 loadDepartments();
 
 // ✅ สมัครสมาชิก (แบบ v2)
